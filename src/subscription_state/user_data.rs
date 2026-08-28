@@ -20,7 +20,11 @@ impl TradingTerminal {
             .connected_address
             .as_deref()
             .and_then(Self::normalize_wallet_address);
-        let sub_id = WsUserDataStreamParams::new(connected_address.clone(), dexes.clone());
+        let sub_id = WsUserDataStreamParams::new(
+            self.hyperliquid_network,
+            connected_address.clone(),
+            dexes.clone(),
+        );
 
         let mut wallet_detail_addresses: Vec<String> = self
             .wallet_detail_windows
@@ -33,8 +37,12 @@ impl TradingTerminal {
         let wallet_details = wallet_detail_addresses
             .into_iter()
             .map(|address| {
-                WsUserDataStreamParams::without_mids(Some(address), dexes.clone())
-                    .with_purpose(WsUserDataStreamPurpose::WalletDetail)
+                WsUserDataStreamParams::without_mids(
+                    self.hyperliquid_network,
+                    Some(address),
+                    dexes.clone(),
+                )
+                .with_purpose(WsUserDataStreamPurpose::WalletDetail)
             })
             .collect();
 
@@ -55,8 +63,12 @@ impl TradingTerminal {
         let cluster_members = cluster_addresses
             .into_iter()
             .map(|address| {
-                WsUserDataStreamParams::without_mids(Some(address), dexes.clone())
-                    .with_purpose(WsUserDataStreamPurpose::WalletCluster)
+                WsUserDataStreamParams::without_mids(
+                    self.hyperliquid_network,
+                    Some(address),
+                    dexes.clone(),
+                )
+                .with_purpose(WsUserDataStreamPurpose::WalletCluster)
             })
             .collect();
 
@@ -98,6 +110,7 @@ impl TradingTerminal {
 mod tests {
     use super::*;
     use crate::config::{AccountProfile, ClearConfigSummary};
+    use crate::hyperliquid_network::HyperliquidNetwork;
     use crate::wallet_cluster_state::{WalletCluster, WalletClusterMember};
     use crate::wallet_state::WalletDetailsWindowState;
 
@@ -129,6 +142,18 @@ mod tests {
         assert_eq!(wallet_details.len(), 1);
         assert!(!wallet_details[0].include_mids);
         assert_eq!(wallet_details[0].address.as_deref(), Some(OTHER));
+        assert!(cluster_members.is_empty());
+    }
+
+    #[test]
+    fn user_data_stream_params_capture_selected_network() {
+        let mut terminal = TradingTerminal::boot().0;
+        terminal.hyperliquid_network = HyperliquidNetwork::Testnet;
+
+        let (base, wallet_details, cluster_members) = terminal.user_data_subscription_params();
+
+        assert_eq!(base.network, HyperliquidNetwork::Testnet);
+        assert!(wallet_details.is_empty());
         assert!(cluster_members.is_empty());
     }
 

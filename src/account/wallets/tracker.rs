@@ -3,7 +3,7 @@ use super::super::{
     SpotClearinghouseState, WalletTrackerSnapshot, fetch_hydromancer_frontend_open_orders_scoped,
     fetch_hydromancer_portfolio_states,
 };
-use crate::api::API_URL;
+use crate::hyperliquid_network::HyperliquidNetwork;
 
 use serde_json::Value;
 use zeroize::Zeroizing;
@@ -29,13 +29,14 @@ use spot_fallback::{
 /// This intentionally excludes `openOrders`: those requests have much higher
 /// rate-limit weight and are refreshed by a separate slow/manual lane.
 pub async fn fetch_wallet_tracker_snapshot_scoped(
+    network: HyperliquidNetwork,
     address: String,
     scope: AccountDataFetchScope,
 ) -> Result<WalletTrackerSnapshot, String> {
     let client = crate::api::CLIENT.clone();
 
     let response = client
-        .post(API_URL)
+        .post(network.info_url())
         .json(&serde_json::json!({"type": "clearinghouseState", "user": address}))
         .send()
         .await
@@ -80,9 +81,11 @@ pub async fn fetch_wallet_tracker_snapshot_scoped(
     // Best-effort like the HIP-3 pass below: a transient failure of the
     // auxiliary spot request must not discard the perp snapshot in hand.
     let valuation_warning =
-        apply_spot_equity_fallback(&client, &address, &mut equity, &mut withdrawable).await;
+        apply_spot_equity_fallback(&client, network, &address, &mut equity, &mut withdrawable)
+            .await;
     append_hip3_margin_and_positions(
         &client,
+        network,
         &address,
         &scope,
         &mut margin_used,
@@ -98,22 +101,24 @@ pub async fn fetch_wallet_tracker_snapshot_scoped(
 }
 
 pub async fn fetch_wallet_tracker_snapshot_scoped_with_provider(
+    network: HyperliquidNetwork,
     address: String,
     scope: AccountDataFetchScope,
     provider: crate::config::ReadDataProvider,
     hydromancer_api_key: Zeroizing<String>,
 ) -> Result<WalletTrackerSnapshot, String> {
     if provider != crate::config::ReadDataProvider::Hydromancer {
-        return fetch_wallet_tracker_snapshot_scoped(address, scope).await;
+        return fetch_wallet_tracker_snapshot_scoped(network, address, scope).await;
     }
 
     let api_key = Zeroizing::new(hydromancer_api_key.trim().to_string());
     if api_key.is_empty() {
-        return fetch_wallet_tracker_snapshot_scoped(address, scope).await;
+        return fetch_wallet_tracker_snapshot_scoped(network, address, scope).await;
     }
 
     let mut results = fetch_wallet_tracker_snapshots_scoped_with_provider(
         vec![address.clone()],
+        network,
         scope.clone(),
         provider,
         api_key,
@@ -122,7 +127,7 @@ pub async fn fetch_wallet_tracker_snapshot_scoped_with_provider(
     match results.pop() {
         Some((_, Ok(snapshot))) => Ok(snapshot),
         Some((_, Err(hydromancer_error))) => {
-            fetch_wallet_tracker_snapshot_scoped(address, scope)
+            fetch_wallet_tracker_snapshot_scoped(network, address, scope)
                 .await
                 .map_err(|fallback_error| {
                     format!(
@@ -130,12 +135,13 @@ pub async fn fetch_wallet_tracker_snapshot_scoped_with_provider(
                     )
                 })
         }
-        None => fetch_wallet_tracker_snapshot_scoped(address, scope).await,
+        None => fetch_wallet_tracker_snapshot_scoped(network, address, scope).await,
     }
 }
 
 pub async fn fetch_wallet_tracker_snapshots_scoped_with_provider(
     addresses: Vec<String>,
+    network: HyperliquidNetwork,
     scope: AccountDataFetchScope,
     provider: crate::config::ReadDataProvider,
     hydromancer_api_key: Zeroizing<String>,
@@ -146,7 +152,8 @@ pub async fn fetch_wallet_tracker_snapshots_scoped_with_provider(
         return futures::future::join_all(addresses.into_iter().map(|address| {
             let scope = scope.clone();
             async move {
-                let result = fetch_wallet_tracker_snapshot_scoped(address.clone(), scope).await;
+                let result =
+                    fetch_wallet_tracker_snapshot_scoped(network, address.clone(), scope).await;
                 (address, result)
             }
         }))
@@ -174,7 +181,7 @@ pub async fn fetch_wallet_tracker_snapshots_scoped_with_provider(
             .is_ok_and(|values| values.spot_fallback.is_some())
     });
     let mids = if needs_mids {
-        fetch_spot_fallback_mids(&crate::api::CLIENT.clone()).await
+        fetch_spot_fallback_mids(&crate::api::CLIENT.clone(), network).await
     } else {
         Err("no portfolio-margin wallets in batch".to_string())
     };
@@ -217,24 +224,25 @@ pub async fn fetch_wallet_tracker_snapshots_scoped_with_provider(
 }
 
 pub async fn fetch_wallet_tracker_open_order_count_scoped_with_provider(
+    network: HyperliquidNetwork,
     address: String,
     scope: AccountDataFetchScope,
     provider: crate::config::ReadDataProvider,
     hydromancer_api_key: Zeroizing<String>,
 ) -> Result<usize, String> {
     if provider != crate::config::ReadDataProvider::Hydromancer {
-        return fetch_wallet_tracker_open_order_count_scoped(address, scope).await;
+        return fetch_wallet_tracker_open_order_count_scoped(network, address, scope).await;
     }
 
     let api_key = Zeroizing::new(hydromancer_api_key.trim().to_string());
     if api_key.is_empty() {
-        return fetch_wallet_tracker_open_order_count_scoped(address, scope).await;
+        return fetch_wallet_tracker_open_order_count_scoped(network, address, scope).await;
     }
 
     match fetch_hydromancer_frontend_open_orders_scoped(address.clone(), scope.clone(), api_key).await
     {
         Ok(orders) => Ok(orders.into_iter().filter(order_has_size).count()),
-        Err(hydromancer_error) => fetch_wallet_tracker_open_order_count_scoped(address, scope)
+        Err(hydromancer_error) => fetch_wallet_tracker_open_order_count_scoped(network, address, scope)
             .await
             .map_err(|fallback_error| {
                 format!(

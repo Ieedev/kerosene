@@ -3,6 +3,8 @@ use serde_json::Value;
 use sha3::{Digest, Keccak256};
 use zeroize::Zeroizing;
 
+use crate::hyperliquid_network::HyperliquidNetwork;
+
 /// Parse an agent private key exactly the way order signing does, without
 /// signing anything. A key accepted here cannot fail key decoding later in
 /// `sign_l1_action`.
@@ -74,7 +76,7 @@ fn eip712_hash(phantom_agent_source: &str, connection_id: &[u8; 32]) -> [u8; 32]
         &domain_type_hash,
         &keccak256(b"Exchange"),
         &keccak256(b"1"),
-        &uint256_bytes(1337),
+        &uint256_bytes(HyperliquidNetwork::L1_CHAIN_ID),
         &address_bytes(&[0u8; 20]),
     ]);
 
@@ -120,6 +122,7 @@ fn address_bytes(addr: &[u8; 20]) -> [u8; 32] {
 
 /// Sign an L1 action with the agent wallet private key.
 pub(super) fn sign_l1_action(
+    network: HyperliquidNetwork,
     private_key_hex: &str,
     msgpack_bytes: &[u8],
     vault_address: Option<&str>,
@@ -129,8 +132,7 @@ pub(super) fn sign_l1_action(
     let signing_key = signing_key_from_hex(private_key_hex)?;
 
     let hash = action_hash_bytes(msgpack_bytes, vault_address, nonce, expires_after)?;
-    let phantom_agent_source = "a"; // mainnet
-    let digest = eip712_hash(phantom_agent_source, &hash);
+    let digest = eip712_hash(network.phantom_agent_source(), &hash);
 
     let (signature, recovery_id): (Signature, RecoveryId) = signing_key
         .sign_prehash(&digest)

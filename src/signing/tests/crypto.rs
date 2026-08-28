@@ -1,3 +1,4 @@
+use crate::hyperliquid_network::HyperliquidNetwork;
 use crate::signing::crypto::{action_hash_bytes, sign_l1_action};
 
 const TEST_PRIVATE_KEY: &str = "0000000000000000000000000000000000000000000000000000000000000001";
@@ -45,10 +46,24 @@ fn action_hash_changes_when_expires_after_is_included() {
 
 #[test]
 fn sign_l1_action_accepts_prefixed_and_unprefixed_private_keys() {
-    let unprefixed =
-        sign_l1_action(TEST_PRIVATE_KEY, b"{}", None, 1, None).expect("unprefixed key should sign");
-    let prefixed = sign_l1_action(&format!("0x{TEST_PRIVATE_KEY}"), b"{}", None, 1, None)
-        .expect("prefixed key should sign");
+    let unprefixed = sign_l1_action(
+        HyperliquidNetwork::Mainnet,
+        TEST_PRIVATE_KEY,
+        b"{}",
+        None,
+        1,
+        None,
+    )
+    .expect("unprefixed key should sign");
+    let prefixed = sign_l1_action(
+        HyperliquidNetwork::Mainnet,
+        &format!("0x{TEST_PRIVATE_KEY}"),
+        b"{}",
+        None,
+        1,
+        None,
+    )
+    .expect("prefixed key should sign");
 
     assert_eq!(unprefixed, prefixed);
 }
@@ -56,10 +71,41 @@ fn sign_l1_action_accepts_prefixed_and_unprefixed_private_keys() {
 #[test]
 fn sign_l1_action_rejects_invalid_key_without_echoing_input() {
     let invalid_key = format!("{TEST_PRIVATE_KEY}ff");
-    let error =
-        sign_l1_action(&invalid_key, b"{}", None, 1, None).expect_err("invalid length should fail");
+    let error = sign_l1_action(
+        HyperliquidNetwork::Mainnet,
+        &invalid_key,
+        b"{}",
+        None,
+        1,
+        None,
+    )
+    .expect_err("invalid length should fail");
 
     assert!(error.contains("Invalid private key hex"));
     assert!(!error.contains(&invalid_key));
     assert!(!error.contains(TEST_PRIVATE_KEY));
+}
+
+#[test]
+fn sign_l1_action_binds_signature_to_network_source() {
+    let mainnet = sign_l1_action(
+        HyperliquidNetwork::Mainnet,
+        TEST_PRIVATE_KEY,
+        b"{}",
+        None,
+        1,
+        None,
+    )
+    .expect("mainnet action should sign");
+    let testnet = sign_l1_action(
+        HyperliquidNetwork::Testnet,
+        TEST_PRIVATE_KEY,
+        b"{}",
+        None,
+        1,
+        None,
+    )
+    .expect("testnet action should sign");
+
+    assert_ne!(mainnet, testnet);
 }

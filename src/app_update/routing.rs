@@ -8,6 +8,7 @@ use crate::message::Message;
 pub(super) enum UpdateRoute {
     Account,
     Agent,
+    AiOverlay,
     Alfred,
     Annotations,
     Calendar,
@@ -66,6 +67,11 @@ pub(super) fn message_route(message: &Message) -> UpdateRoute {
         | Message::AgentSessionsSaved(_, _)
         | Message::AgentOpenLink(_)
         | Message::AgentLinkOpened(_) => UpdateRoute::Agent,
+
+        Message::AiOverlayServiceUrlChanged(_)
+        | Message::SaveAiOverlayServiceUrl
+        | Message::AiOverlayRefresh
+        | Message::AiOverlayLoaded(_, _) => UpdateRoute::AiOverlay,
 
         Message::CreateCanvas | Message::OpenCanvas(_) => UpdateRoute::Canvas,
 
@@ -234,7 +240,7 @@ pub(super) fn message_route(message: &Message) -> UpdateRoute {
         | Message::TickerTapeRefreshTick
         | Message::TickerTapeContextsLoaded(_, _, _, _)
         | Message::TickerTapeExchangeStatsLoaded(_, _, _)
-        | Message::SymbolsLoaded(_)
+        | Message::SymbolsLoaded(_, _)
         | Message::ExchangeSymbolsRefreshTick
         | Message::LiveWatchlistSortChanged(_, _)
         | Message::LiveWatchlistColumnToggled(_, _, _)
@@ -338,6 +344,7 @@ pub(super) fn message_route(message: &Message) -> UpdateRoute {
         | Message::TestChartHudOrderSound
         | Message::ToggleChartHudUiSounds(_)
         | Message::ReadDataProviderChanged(_)
+        | Message::HyperliquidNetworkSelected(_)
         | Message::ToggleHydromancerRealtimePositionPnl(_)
         | Message::AlfredPopupScaleChanged(_)
         | Message::DisplayFontChanged(_)

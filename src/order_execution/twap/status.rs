@@ -300,7 +300,14 @@ impl TradingTerminal {
 
         if let Some((key, asset, oid, cloid)) = cancel_unexpected {
             self.invalidate_spot_balances_after_twap_dispatch(twap_id);
-            return twap_cancel_child_task(twap_id, key, asset, oid, cloid);
+            return twap_cancel_child_task(
+                self.hyperliquid_network,
+                twap_id,
+                key,
+                asset,
+                oid,
+                cloid,
+            );
         }
         if let Some((cloid, delay)) = retry_status_check {
             return self.check_twap_child_status_after(twap_id, cloid, delay);

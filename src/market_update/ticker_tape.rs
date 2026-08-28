@@ -61,9 +61,18 @@ impl TradingTerminal {
         self.ticker_tape_contexts_request_symbols = requested_symbols.clone();
         self.ticker_tape_contexts_refresh_pending = false;
         self.ticker_tape_contexts_loading = true;
-        Task::perform(api::fetch_watchlist_contexts(symbols), move |result| {
-            Message::TickerTapeContextsLoaded(request_id, requested_symbols.clone(), now_ms, result)
-        })
+        let network = self.hyperliquid_network;
+        Task::perform(
+            api::fetch_watchlist_contexts(network, symbols),
+            move |result| {
+                Message::TickerTapeContextsLoaded(
+                    request_id,
+                    requested_symbols.clone(),
+                    now_ms,
+                    result,
+                )
+            },
+        )
     }
 
     pub(super) fn update_ticker_tape_market(&mut self, message: Message) -> Task<Message> {
@@ -107,7 +116,8 @@ impl TradingTerminal {
             self.ticker_tape_exchange_stats_request_id.saturating_add(1);
         let request_id = self.ticker_tape_exchange_stats_request_id;
         self.ticker_tape_exchange_stats_loading = true;
-        Task::perform(api::fetch_exchange_stats(), move |result| {
+        let network = self.hyperliquid_network;
+        Task::perform(api::fetch_exchange_stats(network), move |result| {
             Message::TickerTapeExchangeStatsLoaded(request_id, now_ms, result)
         })
     }

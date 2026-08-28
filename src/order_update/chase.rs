@@ -80,7 +80,7 @@ impl TradingTerminal {
         }
         let status_task = account_address.map_or_else(Task::none, |account_address| {
             Task::perform(
-                fetch_order_status_by_oid(account_address, oid),
+                fetch_order_status_by_oid(self.hyperliquid_network, account_address, oid),
                 move |result| Message::ChaseOrderOidStatusLoaded {
                     chase_id,
                     oid,

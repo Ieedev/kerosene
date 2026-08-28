@@ -14,6 +14,8 @@ use super::wallets::{
 };
 use super::{CustomFontConfig, DisplayFontConfig};
 use crate::advanced_order_history::AdvancedOrderHistoryEntry;
+use crate::ai_overlay_state::DEFAULT_AI_OVERLAY_SERVICE_URL;
+use crate::hyperliquid_network::HyperliquidNetwork;
 use crate::journal::JournalNote;
 use crate::telegram_feed::{TelegramFeedPrivateChannelConfig, default_telegram_feed_channels};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -106,6 +108,12 @@ pub struct KeroseneConfig {
     pub encrypted_secrets: Option<EncryptedSecretsConfig>,
     #[serde(skip)]
     pub secret_migration_save_blocked: bool,
+    /// Trusted Hyperliquid environment for all native market data and exchange traffic.
+    #[serde(default)]
+    pub hyperliquid_network: HyperliquidNetwork,
+    /// Loopback-only base URL of the read-only local AI status service.
+    #[serde(default = "default_ai_overlay_service_url")]
+    pub ai_overlay_service_url: String,
     #[serde(default)]
     pub main_window_width: Option<f32>,
     #[serde(default)]
@@ -479,6 +487,10 @@ pub struct KeroseneConfig {
     /// Modifier prefix used with number keys to switch the active chart timeframe.
     #[serde(default)]
     pub chart_timeframe_hotkey_prefix: Option<HotkeyPrefixConfig>,
+}
+
+fn default_ai_overlay_service_url() -> String {
+    DEFAULT_AI_OVERLAY_SERVICE_URL.to_string()
 }
 
 fn is_false(value: &bool) -> bool {

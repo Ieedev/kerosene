@@ -1,5 +1,6 @@
-use super::{API_URL, CLIENT};
+use super::CLIENT;
 use crate::helpers::response_snippet;
+use crate::hyperliquid_network::HyperliquidNetwork;
 use serde::Deserialize;
 use serde_json::Value;
 use std::fmt;
@@ -64,6 +65,7 @@ impl OrderBook {
 
 /// Fetch the L2 order book snapshot for a coin.
 pub async fn fetch_order_book(
+    network: HyperliquidNetwork,
     coin: String,
     sigfigs: (Option<u8>, Option<u8>),
 ) -> Result<OrderBook, String> {
@@ -81,7 +83,7 @@ pub async fn fetch_order_book(
 
     let client = CLIENT.clone();
     let response = client
-        .post(API_URL)
+        .post(network.info_url())
         .json(&body)
         .send()
         .await

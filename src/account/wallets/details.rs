@@ -8,9 +8,9 @@ use super::super::{
     fetch_hydromancer_frontend_open_orders_scoped, fetch_hydromancer_portfolio_state,
     fetch_hydromancer_user_fills,
 };
-use crate::api::API_URL;
 use crate::app_time::now_ms;
 use crate::helpers::parse_finite_number;
+use crate::hyperliquid_network::HyperliquidNetwork;
 use zeroize::Zeroizing;
 
 /// Fetch detailed watch-only wallet state for a detachable details window.
@@ -18,6 +18,7 @@ use zeroize::Zeroizing;
 /// This is heavier than `fetch_wallet_tracker_snapshot`, so it is intended for
 /// opening/manual refresh. Live updates are layered on via websocket state.
 pub async fn fetch_wallet_details_scoped(
+    network: HyperliquidNetwork,
     address: String,
     scope: AccountDataFetchScope,
 ) -> Result<WalletDetailsData, String> {
@@ -25,11 +26,13 @@ pub async fn fetch_wallet_details_scoped(
 
     let ch_fut = post_info_json_with_retries(
         client.clone(),
+        network,
         "clearinghouseState",
         serde_json::json!({"type": "clearinghouseState", "user": address}),
     );
     let spot_fut = post_info_json_with_retries(
         client.clone(),
+        network,
         "spotClearinghouseState",
         serde_json::json!({"type": "spotClearinghouseState", "user": address}),
     );
@@ -38,7 +41,7 @@ pub async fn fetch_wallet_details_scoped(
         if fetch_main_orders {
             Some(
                 client
-                    .post(API_URL)
+                    .post(network.info_url())
                     .json(&serde_json::json!({"type": "frontendOpenOrders", "user": address}))
                     .send()
                     .await,
@@ -81,10 +84,10 @@ pub async fn fetch_wallet_details_scoped(
         .collect(),
         None => Vec::new(),
     };
-    let fills = fetch_wallet_user_fills_if_needed(&address, &spot, &mut warnings).await;
+    let fills = fetch_wallet_user_fills_if_needed(network, &address, &spot, &mut warnings).await;
 
     let (hip3_ch_results, hip3_order_results) =
-        fetch_hip3_wallet_details(client.clone(), address, &scope).await;
+        fetch_hip3_wallet_details(client.clone(), network, address, &scope).await;
 
     append_hip3_positions(hip3_ch_results, &mut positions, &mut warnings).await;
     append_hip3_open_orders(hip3_order_results, &mut open_orders, &mut warnings).await;
@@ -101,24 +104,25 @@ pub async fn fetch_wallet_details_scoped(
 }
 
 pub async fn fetch_wallet_details_scoped_with_provider(
+    network: HyperliquidNetwork,
     address: String,
     scope: AccountDataFetchScope,
     provider: crate::config::ReadDataProvider,
     hydromancer_api_key: Zeroizing<String>,
 ) -> Result<WalletDetailsData, String> {
     if provider != crate::config::ReadDataProvider::Hydromancer {
-        return fetch_wallet_details_scoped(address, scope).await;
+        return fetch_wallet_details_scoped(network, address, scope).await;
     }
 
     let api_key = Zeroizing::new(hydromancer_api_key.trim().to_string());
     if api_key.is_empty() {
-        return fetch_wallet_details_scoped(address, scope).await;
+        return fetch_wallet_details_scoped(network, address, scope).await;
     }
 
     match fetch_wallet_details_scoped_hydromancer(address.clone(), scope.clone(), api_key).await {
         Ok(data) => Ok(data),
         Err(hydromancer_error) => {
-            let mut data = fetch_wallet_details_scoped(address, scope).await?;
+            let mut data = fetch_wallet_details_scoped(network, address, scope).await?;
             data.warnings
                 .push(crate::read_data_provider::fallback_warning(
                     "wallet details",
@@ -201,6 +205,7 @@ fn order_detail_dex(order: &OpenOrder) -> String {
 }
 
 async fn fetch_wallet_user_fills_if_needed(
+    network: HyperliquidNetwork,
     address: &str,
     spot: &SpotClearinghouseState,
     warnings: &mut Vec<String>,
@@ -210,7 +215,7 @@ async fn fetch_wallet_user_fills_if_needed(
     }
 
     let fills_resp = crate::api::CLIENT
-        .post(API_URL)
+        .post(network.info_url())
         .json(&serde_json::json!({"type": "userFills", "user": address}))
         .send()
         .await;

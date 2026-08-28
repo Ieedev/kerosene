@@ -41,6 +41,7 @@ impl TradingTerminal {
         let hydromancer_generation = self.hydromancer_key_generation;
         let hydromancer_api_key = self.hydromancer_api_key_for_task();
         let instance_epoch = self.spaghetti_instance_epoch;
+        let network = self.hyperliquid_network;
         let exchange_symbols = self.exchange_symbols.clone();
         let muted_tickers = self.muted_tickers.clone();
         let market_universe = self.market_universe.clone();
@@ -70,6 +71,7 @@ impl TradingTerminal {
 
                 if !is_hidden(&series.symbol) {
                     tasks.push(Self::fetch_spaghetti_candles(
+                        network,
                         id,
                         instance_epoch,
                         &series.symbol,

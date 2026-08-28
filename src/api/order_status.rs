@@ -2,8 +2,9 @@ mod model;
 mod parsing;
 
 use self::parsing::parse_order_status_inner;
-use super::{API_URL, CLIENT};
+use super::CLIENT;
 use crate::helpers::sensitive_response_excerpt;
+use crate::hyperliquid_network::HyperliquidNetwork;
 pub(crate) use model::OrderStatusResult;
 use serde_json::Value;
 
@@ -14,20 +15,30 @@ use serde_json::Value;
 const ORDER_STATUS_ERROR_PREVIEW_CHARS: usize = 160;
 
 pub(crate) async fn fetch_order_status_by_cloid(
+    network: HyperliquidNetwork,
     address: String,
     cloid: String,
 ) -> Result<OrderStatusResult, String> {
-    fetch_order_status(address, serde_json::json!(cloid), None, Some(cloid)).await
+    fetch_order_status(
+        network,
+        address,
+        serde_json::json!(cloid),
+        None,
+        Some(cloid),
+    )
+    .await
 }
 
 pub(crate) async fn fetch_order_status_by_oid(
+    network: HyperliquidNetwork,
     address: String,
     oid: u64,
 ) -> Result<OrderStatusResult, String> {
-    fetch_order_status(address, serde_json::json!(oid), Some(oid), None).await
+    fetch_order_status(network, address, serde_json::json!(oid), Some(oid), None).await
 }
 
 async fn fetch_order_status(
+    network: HyperliquidNetwork,
     address: String,
     oid: Value,
     expected_oid: Option<u64>,
@@ -40,7 +51,7 @@ async fn fetch_order_status(
     });
     let response = CLIENT
         .clone()
-        .post(API_URL)
+        .post(network.info_url())
         .json(&body)
         .send()
         .await

@@ -4,8 +4,10 @@ use super::{
     EXCHANGE_EXPIRES_AFTER_MS, PlaceOrderRequest, allocate_exchange_nonce_from,
     build_signed_exchange_payload_with_nonce, exchange_payload_action,
     exchange_payload_contains_private_key, exchange_payload_expires_after, exchange_payload_nonce,
-    exchange_payload_signature, exchange_payload_vault_address, parse_exchange_response,
+    exchange_payload_signature, exchange_payload_vault_address, exchange_request_url,
+    parse_exchange_response,
 };
+use crate::hyperliquid_network::HyperliquidNetwork;
 use std::sync::atomic::{AtomicU64, Ordering};
 use zeroize::Zeroizing;
 
@@ -41,6 +43,7 @@ fn signed_exchange_payload_contains_signed_request_fields_without_private_key() 
     let action = HyperliquidL1Action::cancel(110_003, 42);
 
     let payload = build_signed_exchange_payload_with_nonce(
+        HyperliquidNetwork::Mainnet,
         Zeroizing::new(TEST_PRIVATE_KEY.to_string()),
         &action,
         Some(vault_address),
@@ -89,6 +92,7 @@ fn signed_exchange_payload_error_does_not_echo_private_key() {
     let action = HyperliquidL1Action::cancel(110_003, 42);
 
     let error = build_signed_exchange_payload_with_nonce(
+        HyperliquidNetwork::Mainnet,
         Zeroizing::new(invalid_key.clone()),
         &action,
         None,
@@ -99,6 +103,40 @@ fn signed_exchange_payload_error_does_not_echo_private_key() {
     assert!(error.contains("Invalid private key hex"));
     assert!(!error.contains(&invalid_key));
     assert!(!error.contains(TEST_PRIVATE_KEY));
+}
+
+#[test]
+fn signed_payload_and_exchange_endpoint_are_bound_to_network() {
+    let action = HyperliquidL1Action::cancel(110_003, 42);
+    let mainnet = build_signed_exchange_payload_with_nonce(
+        HyperliquidNetwork::Mainnet,
+        Zeroizing::new(TEST_PRIVATE_KEY.to_string()),
+        &action,
+        None,
+        1_700_000_000_000,
+    )
+    .expect("mainnet payload should sign");
+    let testnet = build_signed_exchange_payload_with_nonce(
+        HyperliquidNetwork::Testnet,
+        Zeroizing::new(TEST_PRIVATE_KEY.to_string()),
+        &action,
+        None,
+        1_700_000_000_000,
+    )
+    .expect("testnet payload should sign");
+
+    assert_ne!(
+        exchange_payload_signature(&mainnet),
+        exchange_payload_signature(&testnet)
+    );
+    assert_eq!(
+        exchange_request_url(HyperliquidNetwork::Mainnet),
+        "https://api.hyperliquid.xyz/exchange"
+    );
+    assert_eq!(
+        exchange_request_url(HyperliquidNetwork::Testnet),
+        "https://api.hyperliquid-testnet.xyz/exchange"
+    );
 }
 
 #[test]

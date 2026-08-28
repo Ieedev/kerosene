@@ -201,10 +201,12 @@ impl TradingTerminal {
         };
 
         let (request, context) = prepared.place_request_with_context(&account_address);
-        place_order_task(key, request, move |r| Message::ClosePositionResult {
-            pending_indicator_id,
-            context,
-            result: Box::new(r),
+        place_order_task(self.hyperliquid_network, key, request, move |r| {
+            Message::ClosePositionResult {
+                pending_indicator_id,
+                context,
+                result: Box::new(r),
+            }
         })
     }
 }

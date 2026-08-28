@@ -70,8 +70,10 @@ impl TradingTerminal {
         let hydromancer_generation = self.hydromancer_key_generation;
         let hydromancer_api_key = self.hydromancer_api_key_for_task();
         let instance_epoch = self.spaghetti_instance_epoch;
+        let network = self.hyperliquid_network;
         for symbol in to_load {
             tasks.push(Self::fetch_spaghetti_candles(
+                network,
                 id,
                 instance_epoch,
                 &symbol,

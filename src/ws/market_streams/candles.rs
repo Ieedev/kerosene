@@ -1,4 +1,5 @@
 use crate::api::Candle;
+use crate::hyperliquid_network::HyperliquidNetwork;
 use crate::ws::{SubscriptionGuard, WsCommand, WsStream, get_manager};
 
 use super::{KeyedCandleStreamEvent, SpaghettiCandleStreamEvent, WsStreamEvent};
@@ -9,12 +10,15 @@ use tokio::sync::broadcast;
 // Candle Streams
 // ---------------------------------------------------------------------------
 
-fn ws_candle_stream(params: &(String, String)) -> WsStream<WsStreamEvent<Candle>> {
-    let coin = params.0.clone();
-    let interval = params.1.clone();
+fn ws_candle_stream(
+    params: &(HyperliquidNetwork, String, String),
+) -> WsStream<WsStreamEvent<Candle>> {
+    let network = params.0;
+    let coin = params.1.clone();
+    let interval = params.2.clone();
 
     Box::pin(iced::stream::channel(10, async move |mut output| {
-        let (cmd_tx, mut msg_rx) = get_manager();
+        let (cmd_tx, mut msg_rx) = get_manager(network);
 
         let topic = format!("candle:{}:{}", coin, interval);
         let payload = serde_json::json!({
@@ -77,11 +81,13 @@ fn ws_candle_stream(params: &(String, String)) -> WsStream<WsStreamEvent<Candle>
     }))
 }
 
-pub fn ws_candle_stream_keyed(params: &(u64, String, String)) -> WsStream<KeyedCandleStreamEvent> {
-    let chart_id = params.0;
-    let coin = params.1.clone();
-    let interval = params.2.clone();
-    let pair = (params.1.clone(), params.2.clone());
+pub fn ws_candle_stream_keyed(
+    params: &(HyperliquidNetwork, u64, String, String),
+) -> WsStream<KeyedCandleStreamEvent> {
+    let chart_id = params.1;
+    let coin = params.2.clone();
+    let interval = params.3.clone();
+    let pair = (params.0, params.2.clone(), params.3.clone());
     let inner = ws_candle_stream(&pair);
     Box::pin(futures::StreamExt::map(inner, move |event| match event {
         WsStreamEvent::Item(candle) => {
@@ -99,6 +105,7 @@ pub fn ws_candle_stream_keyed(params: &(u64, String, String)) -> WsStream<KeyedC
 
 pub fn ws_spaghetti_candle_stream(
     params: &(
+        HyperliquidNetwork,
         u64,
         u64,
         String,
@@ -107,13 +114,13 @@ pub fn ws_spaghetti_candle_stream(
         Option<crate::timeframe::Timeframe>,
     ),
 ) -> WsStream<SpaghettiCandleStreamEvent> {
-    let spaghetti_id = params.0;
-    let instance_epoch = params.1;
-    let coin = params.2.clone();
-    let timeframe = params.3;
-    let session = params.4;
-    let session_granularity = params.5;
-    let pair = (params.2.clone(), params.3.api_str().to_string());
+    let spaghetti_id = params.1;
+    let instance_epoch = params.2;
+    let coin = params.3.clone();
+    let timeframe = params.4;
+    let session = params.5;
+    let session_granularity = params.6;
+    let pair = (params.0, params.3.clone(), params.4.api_str().to_string());
     let inner = ws_candle_stream(&pair);
     Box::pin(futures::StreamExt::map(inner, move |event| match event {
         WsStreamEvent::Item(candle) => SpaghettiCandleStreamEvent::Item {

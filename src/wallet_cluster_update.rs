@@ -390,9 +390,11 @@ impl TradingTerminal {
         read_context: ReadDataRequestContext,
     ) -> Task<Message> {
         let provider = self.read_data_provider;
+        let network = self.hyperliquid_network;
         let hydromancer_key = self.hydromancer_api_key_for_task();
         Task::perform(
             fetch_wallet_details_scoped_with_provider(
+                network,
                 address.clone(),
                 scope,
                 provider,
@@ -1052,14 +1054,17 @@ impl TradingTerminal {
             let member_key: RedactedAccountKey = Some(leg.member.profile_secret_id.clone()).into();
             let context = leg.context.clone();
             let key = leg.member.agent_key.clone();
-            tasks.push(place_order_task(key, leg.request, move |result| {
-                Message::WalletClusterOrderResult {
+            tasks.push(place_order_task(
+                self.hyperliquid_network,
+                key,
+                leg.request,
+                move |result| Message::WalletClusterOrderResult {
                     execution_id,
                     member_key,
                     context,
                     result: Box::new(result),
-                }
-            }));
+                },
+            ));
             legs.push(WalletClusterExecutionLeg {
                 profile_secret_id: leg.member.profile_secret_id,
                 address: leg.member.address,
@@ -1122,6 +1127,7 @@ impl TradingTerminal {
                 self.refresh_wallet_cluster_member(profile_secret_id.clone()),
                 Task::perform(
                     fetch_order_status_by_cloid(
+                        self.hyperliquid_network,
                         context.account_address.clone(),
                         context.cloid.clone(),
                     ),

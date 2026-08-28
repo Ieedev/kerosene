@@ -4,6 +4,7 @@ use crate::api::MarketType;
 use crate::app_state::TradingTerminal;
 use crate::app_time::now_ms;
 use crate::helpers::{finite_value, parse_positive_number, positive_finite_value};
+use crate::hyperliquid_network::HyperliquidNetwork;
 use crate::message::Message;
 use crate::signing::{
     ExchangeOrderKind, ExchangeResponse, PlaceOrderRequest, cancel_order, cancel_order_by_cloid,
@@ -439,6 +440,7 @@ pub(crate) fn validate_surface_market_type(
 }
 
 pub(crate) fn place_order_task<F>(
+    network: HyperliquidNetwork,
     key: Zeroizing<String>,
     request: PlaceOrderRequest,
     map: F,
@@ -446,10 +448,11 @@ pub(crate) fn place_order_task<F>(
 where
     F: FnOnce(Result<ExchangeResponse, String>) -> Message + Send + 'static,
 {
-    Task::perform(place_order_with_cloid(key, request), map)
+    Task::perform(place_order_with_cloid(network, key, request), map)
 }
 
 pub(crate) fn cancel_order_task<F>(
+    network: HyperliquidNetwork,
     key: Zeroizing<String>,
     asset: u32,
     oid: u64,
@@ -458,10 +461,11 @@ pub(crate) fn cancel_order_task<F>(
 where
     F: FnOnce(Result<ExchangeResponse, String>) -> Message + Send + 'static,
 {
-    Task::perform(cancel_order(key, asset, oid), map)
+    Task::perform(cancel_order(network, key, asset, oid), map)
 }
 
 pub(crate) fn cancel_order_by_cloid_task<F>(
+    network: HyperliquidNetwork,
     key: Zeroizing<String>,
     asset: u32,
     cloid: String,
@@ -470,10 +474,11 @@ pub(crate) fn cancel_order_by_cloid_task<F>(
 where
     F: FnOnce(Result<ExchangeResponse, String>) -> Message + Send + 'static,
 {
-    Task::perform(cancel_order_by_cloid(key, asset, cloid), map)
+    Task::perform(cancel_order_by_cloid(network, key, asset, cloid), map)
 }
 
 pub(crate) fn modify_order_task<F>(
+    network: HyperliquidNetwork,
     key: Zeroizing<String>,
     order: PreparedModifyOrder,
     map: F,
@@ -483,6 +488,7 @@ where
 {
     Task::perform(
         modify_order(
+            network,
             key,
             order.oid,
             order.asset,

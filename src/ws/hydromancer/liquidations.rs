@@ -31,9 +31,13 @@ fn liquidation_subscription() -> (String, Value) {
 }
 
 pub fn ws_hydromancer_liquidations(
-    stream_key: &(HydromancerStreamKey, u64),
+    stream_key: &(
+        crate::hyperliquid_network::HyperliquidNetwork,
+        HydromancerStreamKey,
+        u64,
+    ),
 ) -> WsStream<HydromancerWsMessage> {
-    let manager_key = stream_key.0.clone();
+    let manager_key = stream_key.1.clone();
     Box::pin(iced::stream::channel(10000, async move |mut output| {
         let (cmd_tx, mut msg_rx) = get_hydromancer_manager(manager_key);
         let (topic, payload) = liquidation_subscription();

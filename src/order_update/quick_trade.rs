@@ -106,13 +106,16 @@ impl TradingTerminal {
         let (place_request, context) = prepared.place_request_with_context(&account_address);
         self.invalidate_spot_balances_after_exchange_dispatch(&account_address, market_type);
 
-        place_order_task(key, place_request, move |result| {
-            Message::QuickTradeOrderResult {
+        place_order_task(
+            self.hyperliquid_network,
+            key,
+            place_request,
+            move |result| Message::QuickTradeOrderResult {
                 pending_indicator_id,
                 context,
                 result: Box::new(result),
-            }
-        })
+            },
+        )
     }
 
     pub(crate) fn handle_quick_trade_order_result(

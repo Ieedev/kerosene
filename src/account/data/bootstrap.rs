@@ -1,8 +1,8 @@
 use super::super::http::{best_effort_response_vec, post_info_json_with_retries};
 use super::super::{AccountData, AccountDataFetchScope, HIP3_DEXES, OpenOrder, UserFill};
 use super::merge::{merge_hip3_open_orders, merge_hip3_positions};
-use crate::api::API_URL;
 use crate::app_time::now_ms;
+use crate::hyperliquid_network::HyperliquidNetwork;
 use responses::{
     account_abstraction_from_best_effort_value, account_states_from_required_spot,
     fee_rates_from_response, funding_history_from_response, hip3_clearinghouse_from_response,
@@ -53,6 +53,7 @@ fn user_fills_payload(address: &str) -> Value {
 /// Fetch account data for a user address, scoped to the visible market universe.
 /// All HTTP requests are fired concurrently to minimize total latency.
 pub async fn fetch_account_data_scoped(
+    network: HyperliquidNetwork,
     address: String,
     scope: AccountDataFetchScope,
 ) -> Result<AccountData, String> {
@@ -62,16 +63,19 @@ pub async fn fetch_account_data_scoped(
     // Main dex: clearinghouse, spot, orders, fills, funding
     let ch_fut = post_info_json_with_retries(
         client.clone(),
+        network,
         "clearinghouseState",
         serde_json::json!({"type": "clearinghouseState", "user": address}),
     );
     let spot_fut = post_info_json_with_retries(
         client.clone(),
+        network,
         "spotClearinghouseState",
         serde_json::json!({"type": "spotClearinghouseState", "user": address}),
     );
     let abstraction_fut = post_info_json_with_retries(
         client.clone(),
+        network,
         "userAbstraction",
         serde_json::json!({"type": "userAbstraction", "user": address}),
     );
@@ -80,7 +84,7 @@ pub async fn fetch_account_data_scoped(
         if fetch_main_orders {
             Some(
                 client
-                    .post(API_URL)
+                    .post(network.info_url())
                     .json(&frontend_open_orders_payload(&address, None))
                     .send()
                     .await,
@@ -90,11 +94,11 @@ pub async fn fetch_account_data_scoped(
         }
     };
     let fills_fut = client
-        .post(API_URL)
+        .post(network.info_url())
         .json(&user_fills_payload(&address))
         .send();
     let funding_fut = client
-        .post(API_URL)
+        .post(network.info_url())
         .json(&serde_json::json!({
             "type": "userFunding",
             "user": address,
@@ -104,7 +108,7 @@ pub async fn fetch_account_data_scoped(
 
     // User fee rates (fired in parallel with everything else)
     let fees_fut = client
-        .post(API_URL)
+        .post(network.info_url())
         .json(&serde_json::json!({"type": "userFees", "user": address}))
         .send();
 
@@ -115,7 +119,7 @@ pub async fn fetch_account_data_scoped(
     for dex in &hip3_dexes {
         hip3_ch_futs.push(
             client
-                .post(API_URL)
+                .post(network.info_url())
                 .json(&serde_json::json!({
                     "type": "clearinghouseState",
                     "user": address,
@@ -125,7 +129,7 @@ pub async fn fetch_account_data_scoped(
         );
         hip3_ord_futs.push(
             client
-                .post(API_URL)
+                .post(network.info_url())
                 .json(&frontend_open_orders_payload(&address, Some(dex)))
                 .send(),
         );
@@ -229,6 +233,7 @@ pub async fn fetch_account_data_scoped(
 }
 
 pub async fn fetch_account_data_scoped_with_provider(
+    network: HyperliquidNetwork,
     address: String,
     scope: AccountDataFetchScope,
     provider: crate::config::ReadDataProvider,
@@ -236,6 +241,7 @@ pub async fn fetch_account_data_scoped_with_provider(
 ) -> Result<AccountData, String> {
     hydromancer::fetch_account_data_scoped_with_provider(
         address,
+        network,
         scope,
         provider,
         hydromancer_api_key,

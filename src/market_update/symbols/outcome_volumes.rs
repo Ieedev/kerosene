@@ -20,9 +20,13 @@ impl TradingTerminal {
 
         self.outcome_volumes_loading = true;
         let requested_symbols = symbols.clone();
-        Task::perform(api::fetch_outcome_volumes_24h(symbols), move |result| {
-            Message::OutcomeVolumesLoaded(request_id, requested_symbols.clone(), result)
-        })
+        let network = self.hyperliquid_network;
+        Task::perform(
+            api::fetch_outcome_volumes_24h(network, symbols),
+            move |result| {
+                Message::OutcomeVolumesLoaded(request_id, requested_symbols.clone(), result)
+            },
+        )
     }
 
     fn current_outcome_volume_symbols(&self) -> Vec<String> {

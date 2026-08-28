@@ -20,10 +20,12 @@ impl TradingTerminal {
             row.loading_context = Some(read_context);
         }
         let scope = self.account_data_fetch_scope();
+        let network = self.hyperliquid_network;
         let provider = self.read_data_provider;
         let hydromancer_key = self.hydromancer_api_key_for_task();
         Task::perform(
             fetch_wallet_tracker_snapshot_scoped_with_provider(
+                network,
                 address.clone(),
                 scope,
                 provider,
@@ -49,11 +51,13 @@ impl TradingTerminal {
             row.loading_context = Some(read_context);
         }
         let scope = self.account_data_fetch_scope();
+        let network = self.hyperliquid_network;
         let provider = self.read_data_provider;
         let hydromancer_key = self.hydromancer_api_key_for_task();
         Task::perform(
             fetch_wallet_tracker_snapshots_scoped_with_provider(
                 addresses,
+                network,
                 scope,
                 provider,
                 hydromancer_key,
@@ -68,10 +72,12 @@ impl TradingTerminal {
         row.order_loading = true;
         row.order_loading_context = Some(read_context);
         let scope = self.account_data_fetch_scope();
+        let network = self.hyperliquid_network;
         let provider = self.read_data_provider;
         let hydromancer_key = self.hydromancer_api_key_for_task();
         Task::perform(
             fetch_wallet_tracker_open_order_count_scoped_with_provider(
+                network,
                 address.clone(),
                 scope,
                 provider,

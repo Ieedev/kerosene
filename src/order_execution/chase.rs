@@ -345,11 +345,12 @@ impl TradingTerminal {
         });
 
         let sigfigs = self.chase_book_fetch_sigfigs(&symbol_key);
-        Task::perform(fetch_order_book(symbol_key, sigfigs), move |result| {
-            Message::ChaseInitialBookLoaded {
+        Task::perform(
+            fetch_order_book(self.hyperliquid_network, symbol_key, sigfigs),
+            move |result| Message::ChaseInitialBookLoaded {
                 chase_id,
                 result: Box::new(result),
-            }
-        })
+            },
+        )
     }
 }

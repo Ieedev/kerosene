@@ -1,5 +1,6 @@
 use super::{KeyedBookStreamEvent, WsStreamEvent};
 use crate::api::{OrderBook, parse_ws_book};
+use crate::hyperliquid_network::HyperliquidNetwork;
 use crate::ws::{
     L2BookSigfigs, SubscriptionGuard, WsCommand, get_manager, l2_book_payload_matches_sigfigs,
 };
@@ -17,11 +18,15 @@ type KeyedBookEventStream = Pin<Box<dyn futures::Stream<Item = KeyedBookStreamEv
 // Order Book Streams
 // ---------------------------------------------------------------------------
 
-fn ws_book_event_stream(coin: &str, sigfigs: BookSigfigs) -> BookEventStream {
+fn ws_book_event_stream(
+    network: HyperliquidNetwork,
+    coin: &str,
+    sigfigs: BookSigfigs,
+) -> BookEventStream {
     let coin = coin.to_string();
 
     Box::pin(iced::stream::channel(10, async move |mut output| {
-        let (cmd_tx, mut msg_rx) = get_manager();
+        let (cmd_tx, mut msg_rx) = get_manager(network);
 
         let topic = format!(
             "l2Book:{}:{}:{}",
@@ -100,11 +105,13 @@ fn ws_book_event_stream(coin: &str, sigfigs: BookSigfigs) -> BookEventStream {
     }))
 }
 
-pub fn ws_book_stream_keyed_events(params: &(u64, String, BookSigfigs)) -> KeyedBookEventStream {
-    let book_id = params.0;
-    let coin = params.1.clone();
-    let sigfigs = params.2;
-    let inner = ws_book_event_stream(&params.1, params.2);
+pub fn ws_book_stream_keyed_events(
+    params: &(HyperliquidNetwork, u64, String, BookSigfigs),
+) -> KeyedBookEventStream {
+    let book_id = params.1;
+    let coin = params.2.clone();
+    let sigfigs = params.3;
+    let inner = ws_book_event_stream(params.0, &params.2, params.3);
     Box::pin(futures::StreamExt::map(inner, move |event| match event {
         WsStreamEvent::Item((coin, book)) => {
             KeyedBookStreamEvent::Item(book_id, coin, sigfigs, None, book)

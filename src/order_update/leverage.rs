@@ -161,7 +161,13 @@ impl TradingTerminal {
         self.order_status = Some(("Updating leverage...".into(), false));
 
         Task::perform(
-            update_leverage(key, context.asset, context.is_cross, context.leverage),
+            update_leverage(
+                self.hyperliquid_network,
+                key,
+                context.asset,
+                context.is_cross,
+                context.leverage,
+            ),
             move |result| Message::OrderLeverageResult {
                 context: context.clone(),
                 result: Box::new(result),

@@ -38,11 +38,6 @@ pub use user_streams::{
     WsUserData, WsUserDataStreamParams, WsUserDataStreamPurpose, ws_user_data_stream,
 };
 
-// ---------------------------------------------------------------------------
-// WebSocket streams
-// ---------------------------------------------------------------------------
-
-pub const WS_URL: &str = "wss://api.hyperliquid.xyz/ws";
 pub type WsStream<T> = std::pin::Pin<Box<dyn futures::Stream<Item = T> + Send>>;
 
 pub(crate) fn broadcast_receiver_closed(error: &tokio::sync::broadcast::error::RecvError) -> bool {

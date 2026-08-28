@@ -118,6 +118,7 @@ impl TradingTerminal {
                     );
                     instance.candle_fetch_request = Some(request.clone());
                     boot_tasks.push(Self::fetch_candles_task(
+                        self.hyperliquid_network,
                         request,
                         self.hydromancer_api_key_for_task(),
                         self.schwab.access_token_for_task(),
@@ -128,6 +129,7 @@ impl TradingTerminal {
                 if !primary_legacy_spot_unresolved {
                     let macro_request_id = instance.next_macro_candles_request_id();
                     boot_tasks.extend(Self::fetch_macro_candles_tasks(
+                        self.hyperliquid_network,
                         id,
                         macro_request_id,
                         &primary_symbol,
@@ -151,6 +153,7 @@ impl TradingTerminal {
                 );
                 instance.secondary_candle_fetch_request = Some(request.clone());
                 boot_tasks.push(Self::fetch_secondary_candles_task(
+                    self.hyperliquid_network,
                     request,
                     self.hydromancer_api_key_for_task(),
                     self.schwab.access_token_for_task(),
@@ -219,6 +222,7 @@ impl TradingTerminal {
                 });
                 if !self.symbol_key_is_hidden(&canonical_key) {
                     boot_tasks.push(Self::fetch_spaghetti_candles(
+                        self.hyperliquid_network,
                         sid,
                         self.spaghetti_instance_epoch,
                         &canonical_key,

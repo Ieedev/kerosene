@@ -1,4 +1,4 @@
-use super::{CredentialStorageMode, KeroseneConfig};
+use super::{CredentialStorageMode, HyperliquidNetwork, KeroseneConfig};
 use crate::config::wallets::{default_wallet_tracker_height, default_wallet_tracker_width};
 use crate::config::{
     CombinedPortfolioConfig, OrderPresetsConfig, WalletClustersConfig, WalletTrackerConfig,
@@ -296,6 +296,9 @@ impl Default for KeroseneConfig {
             credential_storage_mode: CredentialStorageMode::default(),
             encrypted_secrets: None,
             secret_migration_save_blocked: false,
+            hyperliquid_network: HyperliquidNetwork::Mainnet,
+            ai_overlay_service_url: crate::ai_overlay_state::DEFAULT_AI_OVERLAY_SERVICE_URL
+                .to_string(),
             main_window_width: None,
             main_window_height: None,
             main_window_x: None,

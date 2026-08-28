@@ -1,5 +1,6 @@
 use super::{Candle, fetch_candles};
 use crate::helpers::positive_finite_value;
+use crate::hyperliquid_network::HyperliquidNetwork;
 
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -13,6 +14,7 @@ pub(crate) struct OutcomeVolume24h {
 }
 
 pub async fn fetch_outcome_volumes_24h(
+    network: HyperliquidNetwork,
     symbols: Vec<String>,
 ) -> Result<HashMap<String, OutcomeVolume24h>, String> {
     if symbols.is_empty() {
@@ -28,7 +30,7 @@ pub async fn fetch_outcome_volumes_24h(
 
     let fetches = symbols
         .into_iter()
-        .map(|symbol| fetch_outcome_symbol_volume(symbol, start_time, end_time));
+        .map(|symbol| fetch_outcome_symbol_volume(network, symbol, start_time, end_time));
     let results = futures::future::join_all(fetches).await;
 
     let mut volumes = HashMap::new();
@@ -52,11 +54,19 @@ pub async fn fetch_outcome_volumes_24h(
 }
 
 async fn fetch_outcome_symbol_volume(
+    network: HyperliquidNetwork,
     symbol: String,
     start_time: u64,
     end_time: u64,
 ) -> Result<(String, OutcomeVolume24h), String> {
-    let candles = fetch_candles(symbol.clone(), "1h".to_string(), start_time, end_time).await?;
+    let candles = fetch_candles(
+        network,
+        symbol.clone(),
+        "1h".to_string(),
+        start_time,
+        end_time,
+    )
+    .await?;
     let volume = outcome_volume_from_candles(&candles);
     Ok((symbol, volume))
 }

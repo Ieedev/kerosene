@@ -2,7 +2,7 @@ use super::super::super::{
     AccountDataFetchScope, ClearinghouseState, HIP3_DEXES, OpenOrder, WalletOpenOrderDetail,
     WalletPositionDetail, normalize_dex_asset_position_coins, normalize_dex_open_order_coins,
 };
-use crate::api::API_URL;
+use crate::hyperliquid_network::HyperliquidNetwork;
 
 use serde_json::Value;
 
@@ -10,6 +10,7 @@ type Hip3ResponseResults = Vec<(String, Result<reqwest::Response, reqwest::Error
 
 pub(super) async fn fetch_hip3_wallet_details(
     client: reqwest::Client,
+    network: HyperliquidNetwork,
     address: String,
     scope: &AccountDataFetchScope,
 ) -> (Hip3ResponseResults, Hip3ResponseResults) {
@@ -19,7 +20,7 @@ pub(super) async fn fetch_hip3_wallet_details(
         hip3_ch_futs.push((
             dex.clone(),
             client
-                .post(API_URL)
+                .post(network.info_url())
                 .json(&serde_json::json!({
                     "type": "clearinghouseState",
                     "user": address,
@@ -30,7 +31,7 @@ pub(super) async fn fetch_hip3_wallet_details(
         hip3_order_futs.push((
             dex.clone(),
             client
-                .post(API_URL)
+                .post(network.info_url())
                 .json(&serde_json::json!({
                     "type": "frontendOpenOrders",
                     "user": address,

@@ -2,12 +2,15 @@ use super::super::Candle;
 use super::super::candles::fetch_candles;
 use crate::app_time::now_ms;
 use crate::helpers::{finite_value, redact_sensitive_response_text};
+use crate::hyperliquid_network::HyperliquidNetwork;
 use std::collections::HashMap;
 
 pub async fn fetch_watchlist_history(
+    network: HyperliquidNetwork,
     symbols: Vec<String>,
 ) -> Result<HashMap<String, (f64, f64, f64)>, String> {
     fetch_symbol_history(
+        network,
         symbols,
         history_baselines,
         Some("No watchlist history available"),
@@ -16,9 +19,11 @@ pub async fn fetch_watchlist_history(
 }
 
 pub async fn fetch_screener_history(
+    network: HyperliquidNetwork,
     symbols: Vec<String>,
 ) -> Result<HashMap<String, (f64, f64)>, String> {
     fetch_symbol_history(
+        network,
         symbols,
         screener_history_baselines,
         Some("No screener history available"),
@@ -27,6 +32,7 @@ pub async fn fetch_screener_history(
 }
 
 async fn fetch_symbol_history<T>(
+    network: HyperliquidNetwork,
     symbols: Vec<String>,
     baselines: impl Fn(Vec<Candle>, u64) -> Option<T>,
     all_failed_error: Option<&str>,
@@ -41,7 +47,7 @@ async fn fetch_symbol_history<T>(
     let mut last_error = None;
 
     for sym in symbols {
-        let res = fetch_candles(sym.clone(), "1m".to_string(), start_ms, now_ms).await;
+        let res = fetch_candles(network, sym.clone(), "1m".to_string(), start_ms, now_ms).await;
         match res {
             Ok(candles) => {
                 if let Some(values) = baselines(candles, now_ms) {

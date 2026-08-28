@@ -176,11 +176,16 @@ impl TradingTerminal {
             let k = key.clone();
             let prepared = nuke_prepared_order(coin, order);
             let (request, context) = prepared.place_request_with_context(&account_address);
-            tasks.push(place_order_task(k, request, move |r| Message::NukeResult {
-                execution_id,
-                context,
-                result: Box::new(r),
-            }));
+            tasks.push(place_order_task(
+                self.hyperliquid_network,
+                k,
+                request,
+                move |r| Message::NukeResult {
+                    execution_id,
+                    context,
+                    result: Box::new(r),
+                },
+            ));
         }
 
         let total = ready_count + skipped_count;

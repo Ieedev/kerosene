@@ -2,6 +2,7 @@ use crate::annotations::{Annotation, AnnotationId};
 use crate::app_state::TradingTerminal;
 use crate::chart_state::{CandleCacheTarget, ChartBackfillFetchContext, ChartId, ChartInstance};
 use crate::config::{ChartBackfillSource, ChartConfig, SpaghettiChartConfig};
+use crate::hyperliquid_network::HyperliquidNetwork;
 use crate::message::Message;
 use crate::spaghetti;
 use crate::spaghetti_state::{SpaghettiChartId, SpaghettiChartInstance};
@@ -12,6 +13,7 @@ use zeroize::Zeroizing;
 
 impl TradingTerminal {
     pub(crate) fn boot_chart_instances(
+        network: HyperliquidNetwork,
         chart_configs: &[ChartConfig],
         muted_tickers: &HashSet<String>,
         chart_backfill_source: ChartBackfillSource,
@@ -99,6 +101,7 @@ impl TradingTerminal {
                         ));
                     }
                     boot_tasks.push(Self::fetch_candles_task(
+                        network,
                         request,
                         hydromancer_api_key.clone(),
                         schwab_access_token.clone(),
@@ -109,6 +112,7 @@ impl TradingTerminal {
                 if !defer_primary_legacy_spot {
                     let macro_request_id = instance.next_macro_candles_request_id();
                     boot_tasks.extend(Self::fetch_macro_candles_tasks(
+                        network,
                         id,
                         macro_request_id,
                         &chart_cfg.symbol,
@@ -147,6 +151,7 @@ impl TradingTerminal {
                     ));
                 }
                 boot_tasks.push(Self::fetch_secondary_candles_task(
+                    network,
                     request,
                     hydromancer_api_key.clone(),
                     schwab_access_token.clone(),
@@ -160,6 +165,7 @@ impl TradingTerminal {
     }
 
     pub(crate) fn boot_spaghetti_instances(
+        network: HyperliquidNetwork,
         spaghetti_configs: &[SpaghettiChartConfig],
         muted_tickers: &HashSet<String>,
         chart_backfill_source: ChartBackfillSource,
@@ -213,6 +219,7 @@ impl TradingTerminal {
                 });
                 if !defer_legacy_api_named_pair {
                     boot_tasks.push(Self::fetch_spaghetti_candles(
+                        network,
                         sid,
                         0,
                         sym_key,

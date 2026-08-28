@@ -14,6 +14,7 @@ use crate::app_time::now_ms;
 use crate::config::ReadDataProvider;
 use crate::helpers::sensitive_response_excerpt;
 use crate::hydromancer_api::HYDROMANCER_API_URL;
+use crate::hyperliquid_network::HyperliquidNetwork;
 
 use serde::Deserialize;
 use serde_json::Value;
@@ -32,17 +33,18 @@ pub(crate) type PortfolioClearinghouses = (
 
 pub(super) async fn fetch_account_data_scoped_with_provider(
     address: String,
+    network: HyperliquidNetwork,
     scope: AccountDataFetchScope,
     provider: ReadDataProvider,
     hydromancer_api_key: Zeroizing<String>,
 ) -> Result<AccountData, String> {
     if provider != ReadDataProvider::Hydromancer {
-        return super::fetch_account_data_scoped(address, scope).await;
+        return super::fetch_account_data_scoped(network, address, scope).await;
     }
 
     let api_key = Zeroizing::new(hydromancer_api_key.trim().to_string());
     if api_key.is_empty() {
-        let mut data = super::fetch_account_data_scoped(address, scope).await?;
+        let mut data = super::fetch_account_data_scoped(network, address, scope).await?;
         // The Hyperliquid fallback returns a usable positions snapshot for the
         // fetched scope; mark it degraded (not incomplete) so the warning still
         // surfaces while close/NUKE controls stay enabled. If the inner fetch
@@ -58,7 +60,7 @@ pub(super) async fn fetch_account_data_scoped_with_provider(
     match fetch_account_data_scoped_hydromancer(address.clone(), scope.clone(), api_key).await {
         Ok(data) => Ok(data),
         Err(error) => {
-            let mut data = super::fetch_account_data_scoped(address, scope).await?;
+            let mut data = super::fetch_account_data_scoped(network, address, scope).await?;
             data.completeness.mark_degraded(
                 AccountDataSection::Positions,
                 crate::read_data_provider::fallback_warning("account refresh", &error),

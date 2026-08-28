@@ -96,6 +96,8 @@ impl TradingTerminal {
             chart_hud_readout: self.chart_hud_readout,
             alfred_popup_scale: self.alfred_popup_scale,
             read_data_provider: self.read_data_provider,
+            hyperliquid_network: self.hyperliquid_network,
+            ai_overlay_service_url: self.ai_overlay_service_url.clone(),
             chart_backfill_source: self.read_data_provider.chart_backfill_source(),
             display_font: self.display_font.clone(),
             monospace_font: self.monospace_font.clone(),

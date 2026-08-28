@@ -51,8 +51,9 @@ impl TradingTerminal {
             return Task::none();
         };
         let request_cloid = cloid.clone();
+        let network = self.hyperliquid_network;
         Task::perform(
-            fetch_order_status_by_cloid(address, request_cloid),
+            fetch_order_status_by_cloid(network, address, request_cloid),
             move |result| Message::TwapOrderStatusLoaded {
                 twap_id,
                 cloid: cloid.clone(),
@@ -71,10 +72,11 @@ impl TradingTerminal {
             return Task::none();
         };
         let request_cloid = cloid.clone();
+        let network = self.hyperliquid_network;
         Task::perform(
             async move {
                 tokio::time::sleep(delay).await;
-                fetch_order_status_by_cloid(address, request_cloid).await
+                fetch_order_status_by_cloid(network, address, request_cloid).await
             },
             move |result| Message::TwapOrderStatusLoaded {
                 twap_id,

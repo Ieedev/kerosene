@@ -142,9 +142,18 @@ impl TradingTerminal {
                 || message.starts_with(SCREENER_CONTEXT_FAILURE_PREFIX)
                 || message.starts_with(SCREENER_CONTEXT_PARTIAL_PREFIX)
         });
-        Task::perform(api::fetch_watchlist_contexts(symbols), move |result| {
-            Message::ScreenerContextsLoaded(request_id, requested_symbols.clone(), now_ms, result)
-        })
+        let network = self.hyperliquid_network;
+        Task::perform(
+            api::fetch_watchlist_contexts(network, symbols),
+            move |result| {
+                Message::ScreenerContextsLoaded(
+                    request_id,
+                    requested_symbols.clone(),
+                    now_ms,
+                    result,
+                )
+            },
+        )
     }
 
     pub(crate) fn request_screener_history_refresh(&mut self) -> Task<Message> {
@@ -203,8 +212,9 @@ impl TradingTerminal {
         self.screener.history_request_symbols = requested_symbols.clone();
         self.screener.history_refresh_pending = false;
         self.screener.history_loading = true;
+        let network = self.hyperliquid_network;
         Task::perform(
-            api::fetch_screener_history(symbols.clone()),
+            api::fetch_screener_history(network, symbols.clone()),
             move |result| {
                 Message::ScreenerHistoryLoaded(
                     request_id,

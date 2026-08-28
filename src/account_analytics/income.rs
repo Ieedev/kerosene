@@ -2,8 +2,9 @@ use self::parsing::{parse_reserve_states, parse_spot_token_names};
 use self::snapshot::build_income_snapshot;
 use super::http::{account_analytics_preview, optional_response_value, response_json};
 use super::model::{BorrowLendInterestEntry, BorrowLendUserState, IncomeSnapshot};
-use crate::api::{API_URL, CLIENT};
+use crate::api::CLIENT;
 use crate::helpers::redact_sensitive_response_text;
+use crate::hyperliquid_network::HyperliquidNetwork;
 
 use serde_json::Value;
 use std::collections::HashMap;
@@ -16,8 +17,11 @@ mod snapshot;
 // ---------------------------------------------------------------------------
 
 /// Fetch borrow/lend income data for a portfolio-margin account.
-pub async fn fetch_income_data(address: String) -> Result<IncomeSnapshot, String> {
-    fetch_income_data_from_url(CLIENT.clone(), API_URL, address).await
+pub async fn fetch_income_data(
+    network: HyperliquidNetwork,
+    address: String,
+) -> Result<IncomeSnapshot, String> {
+    fetch_income_data_from_url(CLIENT.clone(), network.info_url(), address).await
 }
 
 async fn fetch_income_data_from_url(

@@ -22,7 +22,11 @@ impl TradingTerminal {
             let reconnect_nonce = self.liquidations_reconnect_nonce;
             subs.push(
                 Subscription::run_with(
-                    (hydromancer_key.clone(), self.liquidations_reconnect_nonce),
+                    (
+                        self.hyperliquid_network,
+                        hydromancer_key.clone(),
+                        self.liquidations_reconnect_nonce,
+                    ),
                     crate::ws::ws_hydromancer_liquidations,
                 )
                 .with((hydromancer_key_generation, reconnect_nonce))
@@ -46,6 +50,7 @@ impl TradingTerminal {
                 subs.push(
                     Subscription::run_with(
                         (
+                            self.hyperliquid_network,
                             hydromancer_key.clone(),
                             self.tracked_trades_reconnect_nonce,
                             tracked_addresses,
@@ -75,7 +80,7 @@ impl TradingTerminal {
         }
 
         subs.push(Subscription::run_with(
-            hydromancer_key,
+            (self.hyperliquid_network, hydromancer_key),
             crate::ws::ws_hydromancer_api_latency_probe,
         ));
     }

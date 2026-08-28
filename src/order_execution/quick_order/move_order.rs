@@ -188,12 +188,14 @@ impl TradingTerminal {
             &account_address,
             prepared.market_type,
         );
-        modify_order_task(key, prepared, move |r| Message::MoveOrderModifyResult {
-            account_address: account_address.clone().into(),
-            coin: move_key.coin().to_string(),
-            oid,
-            pending_indicator_id,
-            result: Box::new(r),
+        modify_order_task(self.hyperliquid_network, key, prepared, move |r| {
+            Message::MoveOrderModifyResult {
+                account_address: account_address.clone().into(),
+                coin: move_key.coin().to_string(),
+                oid,
+                pending_indicator_id,
+                result: Box::new(r),
+            }
         })
     }
 }

@@ -11,6 +11,7 @@ use iced::Task;
 impl TradingTerminal {
     /// Build a Task that fetches candles for a spaghetti chart series.
     pub(crate) fn fetch_spaghetti_candles(
+        network: crate::hyperliquid_network::HyperliquidNetwork,
         spaghetti_id: SpaghettiChartId,
         instance_epoch: u64,
         coin: &str,
@@ -36,6 +37,7 @@ impl TradingTerminal {
         };
         Task::perform(
             api::fetch_chart_backfill_candles(api::ChartCandleFetchRequest {
+                network,
                 source: backfill.source,
                 hydromancer_api_key: backfill.hydromancer_api_key,
                 schwab_access_token: zeroize::Zeroizing::new(String::new()),

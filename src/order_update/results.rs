@@ -232,12 +232,13 @@ impl TradingTerminal {
     }
 
     fn cancel_order_status_task(
+        network: crate::hyperliquid_network::HyperliquidNetwork,
         account_address: String,
         oid: u64,
         symbol: String,
     ) -> Task<Message> {
         Task::perform(
-            fetch_order_status_by_oid(account_address.clone(), oid),
+            fetch_order_status_by_oid(network, account_address.clone(), oid),
             move |result| Message::CancelOrderStatusLoaded {
                 account_address: account_address.into(),
                 oid,
@@ -321,7 +322,12 @@ impl TradingTerminal {
             let status_task = cancelled_order
                 .clone()
                 .map_or_else(Task::none, |(oid, symbol)| {
-                    Self::cancel_order_status_task(account_address.clone(), oid, symbol)
+                    Self::cancel_order_status_task(
+                        self.hyperliquid_network,
+                        account_address.clone(),
+                        oid,
+                        symbol,
+                    )
                 });
             let order_label = cancelled_oid
                 .map(|oid| format!(" for order {oid}"))
@@ -341,7 +347,12 @@ impl TradingTerminal {
             let status_task = cancelled_order
                 .clone()
                 .map_or_else(Task::none, |(oid, symbol)| {
-                    Self::cancel_order_status_task(account_address.clone(), oid, symbol)
+                    Self::cancel_order_status_task(
+                        self.hyperliquid_network,
+                        account_address.clone(),
+                        oid,
+                        symbol,
+                    )
                 });
             let order_label = cancelled_oid
                 .map(|oid| format!(" for order {oid}"))
@@ -489,7 +500,11 @@ impl TradingTerminal {
             );
             let request_context = context.clone();
             return Task::perform(
-                fetch_order_status_by_cloid(context.account_address.clone(), context.cloid.clone()),
+                fetch_order_status_by_cloid(
+                    self.hyperliquid_network,
+                    context.account_address.clone(),
+                    context.cloid.clone(),
+                ),
                 move |result| Message::NukePlacementStatusLoaded {
                     execution_id,
                     context: request_context,
@@ -654,7 +669,11 @@ impl TradingTerminal {
             let request_context = context.clone();
             let request_id = self.begin_one_shot_status_request(&context);
             let status_task = Task::perform(
-                fetch_order_status_by_cloid(context.account_address.clone(), context.cloid.clone()),
+                fetch_order_status_by_cloid(
+                    self.hyperliquid_network,
+                    context.account_address.clone(),
+                    context.cloid.clone(),
+                ),
                 move |result| Message::OneShotPlacementStatusLoaded {
                     request_id,
                     context: request_context,

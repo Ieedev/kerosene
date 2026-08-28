@@ -154,7 +154,8 @@ impl TradingTerminal {
             return Task::none();
         };
         let requested_address = address.clone();
-        Task::perform(fetch_portfolio_history(address), move |result| {
+        let network = self.hyperliquid_network;
+        Task::perform(fetch_portfolio_history(network, address), move |result| {
             Message::CombinedPortfolioLoaded(
                 requested_address.clone().into(),
                 request_id,

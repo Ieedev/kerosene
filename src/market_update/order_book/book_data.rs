@@ -217,8 +217,9 @@ impl TradingTerminal {
             inst.book_error = None;
             let request_id =
                 inst.mark_book_request(plan.symbol.clone(), plan.tick_size, plan.sigfigs);
+            let network = self.hyperliquid_network;
             return Task::perform(
-                fetch_order_book(plan.symbol.clone(), plan.sigfigs),
+                fetch_order_book(network, plan.symbol.clone(), plan.sigfigs),
                 move |result| Message::BookLoaded {
                     request_id,
                     id: plan.id,

@@ -1,4 +1,4 @@
-use crate::api::API_URL;
+use crate::hyperliquid_network::HyperliquidNetwork;
 
 use std::collections::HashMap;
 
@@ -7,10 +7,13 @@ use std::collections::HashMap;
 // ---------------------------------------------------------------------------
 
 /// Fetch all mid prices for a given dex.
-pub async fn fetch_all_mids(dex: String) -> Result<HashMap<String, String>, String> {
+pub async fn fetch_all_mids(
+    network: HyperliquidNetwork,
+    dex: String,
+) -> Result<HashMap<String, String>, String> {
     let client = crate::api::CLIENT.clone();
     let mids: HashMap<String, String> = client
-        .post(API_URL)
+        .post(network.info_url())
         .json(&serde_json::json!({"type": "allMids", "dex": dex}))
         .send()
         .await

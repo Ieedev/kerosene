@@ -92,13 +92,17 @@ impl TradingTerminal {
             &account_address,
             prepared.market_type,
         );
-        cancel_order_task(key, prepared.asset, prepared.oid, move |result| {
-            Message::CancelResult {
+        cancel_order_task(
+            self.hyperliquid_network,
+            key,
+            prepared.asset,
+            prepared.oid,
+            move |result| Message::CancelResult {
                 account_address: account_address.into(),
                 pending_indicator_id,
                 result: Box::new(result),
-            }
-        })
+            },
+        )
     }
 }
 

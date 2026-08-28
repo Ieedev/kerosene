@@ -1,5 +1,7 @@
 use super::*;
+use crate::hyperliquid_network::HyperliquidNetwork;
 use serde_json::json;
+use std::collections::HashMap;
 use std::time::Duration;
 
 mod reconnect;
@@ -7,6 +9,46 @@ mod stale_read;
 mod timeout;
 
 const DEBUG_ADDRESS: &str = "0xabc0000000000000000000000000000000000000";
+
+fn test_manager() -> WsManager {
+    let (cmd_tx, _) = mpsc::unbounded_channel();
+    let (msg_tx, _) = broadcast::channel(1);
+    WsManager {
+        cmd_tx: WsCommandSender::new_for_test(cmd_tx),
+        msg_tx,
+    }
+}
+
+#[test]
+fn managers_are_isolated_by_network() {
+    let mut managers = HashMap::new();
+    manager_for_network(&mut managers, HyperliquidNetwork::Mainnet, test_manager);
+    manager_for_network(&mut managers, HyperliquidNetwork::Testnet, test_manager);
+
+    assert_eq!(managers.len(), 2);
+    assert!(managers.contains_key(&HyperliquidNetwork::Mainnet));
+    assert!(managers.contains_key(&HyperliquidNetwork::Testnet));
+}
+
+#[test]
+fn manager_and_latency_probe_urls_follow_network() {
+    assert_eq!(
+        ws_manager_url(HyperliquidNetwork::Testnet),
+        HyperliquidNetwork::Testnet.ws_url()
+    );
+    assert_eq!(
+        api_latency_probe_url(HyperliquidNetwork::Testnet),
+        HyperliquidNetwork::Testnet.info_url()
+    );
+    assert_ne!(
+        ws_manager_url(HyperliquidNetwork::Mainnet),
+        ws_manager_url(HyperliquidNetwork::Testnet)
+    );
+    assert_ne!(
+        api_latency_probe_url(HyperliquidNetwork::Mainnet),
+        api_latency_probe_url(HyperliquidNetwork::Testnet)
+    );
+}
 
 #[test]
 fn ws_command_debug_redacts_user_subscription_payload() {

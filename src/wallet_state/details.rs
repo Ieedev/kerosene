@@ -21,9 +21,11 @@ impl TradingTerminal {
         read_context: ReadDataRequestContext,
     ) -> Task<Message> {
         let provider = self.read_data_provider;
+        let network = self.hyperliquid_network;
         let hydromancer_key = self.hydromancer_api_key_for_task();
         Task::perform(
             fetch_wallet_details_scoped_with_provider(
+                network,
                 address.clone(),
                 scope,
                 provider,

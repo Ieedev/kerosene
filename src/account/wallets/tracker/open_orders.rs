@@ -1,7 +1,8 @@
 use super::super::super::{AccountDataFetchScope, HIP3_DEXES, OpenOrder};
-use crate::api::API_URL;
+use crate::hyperliquid_network::HyperliquidNetwork;
 
 pub async fn fetch_wallet_tracker_open_order_count_scoped(
+    network: HyperliquidNetwork,
     address: String,
     scope: AccountDataFetchScope,
 ) -> Result<usize, String> {
@@ -10,7 +11,7 @@ pub async fn fetch_wallet_tracker_open_order_count_scoped(
     if scope.fetches_main_open_orders() {
         order_futs.push(
             client
-                .post(API_URL)
+                .post(network.info_url())
                 .json(&serde_json::json!({"type": "openOrders", "user": address}))
                 .send(),
         );
@@ -19,7 +20,7 @@ pub async fn fetch_wallet_tracker_open_order_count_scoped(
     for dex in scope.hip3_dexes(HIP3_DEXES) {
         order_futs.push(
             client
-                .post(API_URL)
+                .post(network.info_url())
                 .json(&serde_json::json!({
                     "type": "openOrders",
                     "user": address,

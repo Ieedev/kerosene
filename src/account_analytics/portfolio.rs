@@ -1,13 +1,17 @@
 use super::http::{account_analytics_preview, post_info_json};
 use super::model::{PortfolioBucket, PortfolioHistory};
-use crate::api::{API_URL, CLIENT};
+use crate::api::CLIENT;
 use crate::helpers::{parse_finite_json_number, redact_sensitive_response_text};
+use crate::hyperliquid_network::HyperliquidNetwork;
 
 use serde_json::Value;
 
 /// Fetch user portfolio history buckets from the `portfolio` info endpoint.
-pub async fn fetch_portfolio_history(address: String) -> Result<PortfolioHistory, String> {
-    fetch_portfolio_history_from_url(CLIENT.clone(), API_URL, address).await
+pub async fn fetch_portfolio_history(
+    network: HyperliquidNetwork,
+    address: String,
+) -> Result<PortfolioHistory, String> {
+    fetch_portfolio_history_from_url(CLIENT.clone(), network.info_url(), address).await
 }
 
 async fn fetch_portfolio_history_from_url(

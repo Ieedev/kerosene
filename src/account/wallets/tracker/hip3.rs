@@ -1,7 +1,7 @@
 use super::super::super::{AccountDataFetchScope, AssetPosition, ClearinghouseState, HIP3_DEXES};
 use super::snapshot::parse_tracker_number;
-use crate::api::API_URL;
 use crate::helpers::add_optional_f64;
+use crate::hyperliquid_network::HyperliquidNetwork;
 
 // ---------------------------------------------------------------------------
 // HIP-3 Snapshot Aggregation
@@ -9,6 +9,7 @@ use crate::helpers::add_optional_f64;
 
 pub(super) async fn append_hip3_margin_and_positions(
     client: &reqwest::Client,
+    network: HyperliquidNetwork,
     address: &str,
     scope: &AccountDataFetchScope,
     margin_used: &mut Option<f64>,
@@ -18,7 +19,7 @@ pub(super) async fn append_hip3_margin_and_positions(
     for dex in scope.hip3_dexes(HIP3_DEXES) {
         hip3_ch_futs.push(
             client
-                .post(API_URL)
+                .post(network.info_url())
                 .json(&serde_json::json!({
                     "type": "clearinghouseState",
                     "user": address,

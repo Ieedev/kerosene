@@ -2,7 +2,8 @@ use super::model::{WatchlistContext, WatchlistContextsResponse};
 use super::parsing::{
     append_perp_contexts_for_symbols, append_spot_contexts_for_symbols, insert_empty_context,
 };
-use crate::api::{API_URL, CLIENT};
+use crate::api::CLIENT;
+use crate::hyperliquid_network::HyperliquidNetwork;
 use serde_json::Value;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -29,18 +30,21 @@ impl ContextFamily {
 }
 
 pub async fn fetch_watchlist_contexts(
+    network: HyperliquidNetwork,
     symbols: Vec<String>,
 ) -> Result<WatchlistContextsResponse, String> {
-    fetch_watchlist_contexts_with_cache(symbols, true).await
+    fetch_watchlist_contexts_with_cache(network, symbols, true).await
 }
 
 pub(crate) async fn fetch_watchlist_contexts_uncached(
+    network: HyperliquidNetwork,
     symbols: Vec<String>,
 ) -> Result<WatchlistContextsResponse, String> {
-    fetch_watchlist_contexts_with_cache(symbols, false).await
+    fetch_watchlist_contexts_with_cache(network, symbols, false).await
 }
 
 async fn fetch_watchlist_contexts_with_cache(
+    network: HyperliquidNetwork,
     symbols: Vec<String>,
     allow_cache: bool,
 ) -> Result<WatchlistContextsResponse, String> {
@@ -98,7 +102,7 @@ async fn fetch_watchlist_contexts_with_cache(
     let results = futures::future::join_all(
         families
             .into_iter()
-            .map(|family| fetch_context_family(client.clone(), family)),
+            .map(|family| fetch_context_family(client.clone(), network, family)),
     )
     .await;
     let response = merge_context_family_results(map, results)?;
@@ -108,6 +112,7 @@ async fn fetch_watchlist_contexts_with_cache(
 
 async fn fetch_context_family(
     client: reqwest::Client,
+    network: HyperliquidNetwork,
     family: ContextFamily,
 ) -> ContextFamilyResult {
     let label = family.label();
@@ -125,7 +130,7 @@ async fn fetch_context_family(
             }
         };
         let response: Value = client
-            .post(API_URL)
+            .post(network.info_url())
             .json(&body)
             .send()
             .await

@@ -276,6 +276,7 @@ impl TradingTerminal {
 
         if let Some(request) = retry_request {
             return Self::fetch_candles_task(
+                self.hyperliquid_network,
                 request,
                 self.hydromancer_api_key_for_task(),
                 self.schwab.access_token_for_task(),
@@ -466,6 +467,7 @@ impl TradingTerminal {
 
         if let Some(request) = retry_request {
             return Self::fetch_secondary_candles_task(
+                self.hyperliquid_network,
                 request,
                 self.hydromancer_api_key_for_task(),
                 self.schwab.access_token_for_task(),

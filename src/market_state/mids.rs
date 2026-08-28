@@ -59,9 +59,10 @@ impl TradingTerminal {
         Task::batch([order_book_task, liquidation_distribution_task])
     }
 
-    pub(crate) fn fetch_mids_task_for_dex(dex: &str) -> Task<Message> {
+    pub(crate) fn fetch_mids_task_for_dex(&self, dex: &str) -> Task<Message> {
         let dex_name = dex.to_string();
-        Task::perform(fetch_all_mids(dex_name.clone()), move |result| {
+        let network = self.hyperliquid_network;
+        Task::perform(fetch_all_mids(network, dex_name.clone()), move |result| {
             let parsed = result.map(parse_mids_response);
             Message::AllMidsBootstrapLoaded(dex_name.clone(), parsed)
         })
@@ -87,7 +88,7 @@ impl TradingTerminal {
         let dexes = self.visible_mids_dexes();
         let mut tasks = Vec::with_capacity(dexes.len());
         for dex in dexes {
-            tasks.push(Self::fetch_mids_task_for_dex(&dex));
+            tasks.push(self.fetch_mids_task_for_dex(&dex));
         }
         tasks
     }

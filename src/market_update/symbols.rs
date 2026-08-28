@@ -23,7 +23,13 @@ impl TradingTerminal {
     pub(super) fn update_symbol_search_market(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::ToggleFavourite(key) => self.toggle_market_favourite(key),
-            Message::SymbolsLoaded(result) => self.apply_symbols_loaded(result),
+            Message::SymbolsLoaded(network, result) => {
+                if network == self.hyperliquid_network {
+                    self.apply_symbols_loaded(result)
+                } else {
+                    Task::none()
+                }
+            }
             Message::ExchangeSymbolsRefreshTick => self.request_exchange_symbols_refresh(),
             Message::SymbolSearchChanged(query) => {
                 self.symbol_search_query = query;
@@ -97,7 +103,10 @@ impl TradingTerminal {
             return Task::none();
         }
         self.exchange_symbols_refresh_inflight = true;
-        Task::perform(crate::api::fetch_exchange_symbols(), Message::SymbolsLoaded)
+        let network = self.hyperliquid_network;
+        Task::perform(crate::api::fetch_exchange_symbols(network), move |result| {
+            Message::SymbolsLoaded(network, result)
+        })
     }
 
     /// A failed metadata request leaves that market type absent from the
@@ -311,6 +320,7 @@ impl TradingTerminal {
         tasks.extend(spaghetti_fetches.into_iter().map(
             |(chart_id, symbol, timeframe, session, session_granularity)| {
                 Self::fetch_spaghetti_candles(
+                    self.hyperliquid_network,
                     chart_id,
                     spaghetti_instance_epoch,
                     &symbol,
@@ -420,9 +430,10 @@ impl TradingTerminal {
                         true,
                     ));
                     self.exchange_symbols_refresh_inflight = true;
+                    let network = self.hyperliquid_network;
                     initial_tasks.push(Task::perform(
-                        crate::api::fetch_exchange_symbols(),
-                        Message::SymbolsLoaded,
+                        crate::api::fetch_exchange_symbols(network),
+                        move |result| Message::SymbolsLoaded(network, result),
                     ));
                 } else if spot_meta_failed {
                     let retained = self
@@ -574,12 +585,14 @@ impl TradingTerminal {
                             );
                             inst.candle_fetch_request = Some(request.clone());
                             let mut chart_tasks = vec![Self::fetch_candles_task(
+                                self.hyperliquid_network,
                                 request,
                                 hydromancer_api_key.clone(),
                                 schwab_access_token.clone(),
                             )];
                             let macro_request_id = inst.next_macro_candles_request_id();
                             chart_tasks.extend(Self::fetch_macro_candles_tasks(
+                                self.hyperliquid_network,
                                 *id,
                                 macro_request_id,
                                 &valid.key,
@@ -623,6 +636,7 @@ impl TradingTerminal {
                             );
                             inst.secondary_candle_fetch_request = Some(request.clone());
                             tasks.push(Self::fetch_secondary_candles_task(
+                                self.hyperliquid_network,
                                 request,
                                 hydromancer_api_key.clone(),
                                 schwab_access_token.clone(),

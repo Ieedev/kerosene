@@ -267,6 +267,55 @@ impl TradingTerminal {
                     self.refresh_account_data(),
                 ]);
             }
+            Message::HyperliquidNetworkSelected(network) if self.hyperliquid_network != network => {
+                if self.pending_order_action.is_some()
+                    || self.pending_leverage_update.is_some()
+                    || self.pending_nuke_execution.is_some()
+                    || !self.chase_orders.is_empty()
+                    || self
+                        .twap_orders
+                        .values()
+                        .any(|order| !order.status.is_terminal())
+                {
+                    self.push_toast(
+                        "Stop active Chase/TWAP orders and wait for exchange requests before switching networks"
+                            .to_string(),
+                        true,
+                    );
+                    return Task::none();
+                }
+
+                self.hyperliquid_network = network;
+                self.hyperliquid_network_generation =
+                    self.hyperliquid_network_generation.wrapping_add(1);
+                self.bump_read_data_provider_generation();
+                self.exchange_symbols.clear();
+                self.symbols_loading = false;
+                self.exchange_symbols_refresh_inflight = false;
+                self.all_mids.clear();
+                self.all_mids_updated_at_ms.clear();
+                self.account_data = None;
+                self.account_data_address = None;
+                self.account_error = None;
+                self.invalidate_account_data_requests();
+                self.invalidate_wallet_read_data_requests();
+                self.invalidate_portfolio_income_refreshes();
+                self.candle_data_cache.clear();
+                self.candle_data_cache_order.clear();
+                self.persist_config();
+                self.push_toast(
+                    format!("Switched to {}. Reloading market data.", network.label()),
+                    network.is_testnet(),
+                );
+                return Task::batch([
+                    self.reload_chart_backfills_for_source_change(),
+                    self.refresh_account_data(),
+                    Task::perform(
+                        crate::api::fetch_exchange_symbols(self.hyperliquid_network),
+                        move |result| Message::SymbolsLoaded(network, result),
+                    ),
+                ]);
+            }
             Message::AlfredPopupScaleChanged(value) => {
                 self.alfred_popup_scale = normalize_alfred_popup_scale(value);
                 self.persist_config();

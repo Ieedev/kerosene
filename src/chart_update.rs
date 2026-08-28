@@ -508,8 +508,9 @@ impl TradingTerminal {
                 .iter()
                 .map(|(_, symbol)| symbol.clone())
                 .collect();
+            let network = self.hyperliquid_network;
             tasks.push(Task::perform(
-                crate::api::fetch_spot_chart_asset_contexts(fetch_symbols),
+                crate::api::fetch_spot_chart_asset_contexts(network, fetch_symbols),
                 move |result| {
                     Message::ChartSpotAssetContextsRestFetched(spot_targets.clone(), result)
                 },
@@ -521,8 +522,9 @@ impl TradingTerminal {
                 instance.asset_ctx_rest_in_flight = true;
             }
             let fetch_symbol = symbol.clone();
+            let network = self.hyperliquid_network;
             Task::perform(
-                crate::api::fetch_chart_asset_context(fetch_symbol),
+                crate::api::fetch_chart_asset_context(network, fetch_symbol),
                 move |result| Message::ChartAssetContextRestFetched(id, symbol.clone(), result),
             )
         }));

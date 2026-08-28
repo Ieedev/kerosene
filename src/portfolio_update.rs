@@ -13,7 +13,8 @@ impl TradingTerminal {
         }
         let requested_addr = address.clone();
         let request_id = self.portfolio.begin_refresh();
-        Task::perform(fetch_portfolio_history(address), move |r| {
+        let network = self.hyperliquid_network;
+        Task::perform(fetch_portfolio_history(network, address), move |r| {
             Message::PortfolioLoaded(requested_addr.clone().into(), request_id, Box::new(r))
         })
     }
@@ -25,7 +26,8 @@ impl TradingTerminal {
         }
         let requested_addr = address.clone();
         let request_id = self.income.begin_refresh();
-        Task::perform(fetch_income_data(address), move |r| {
+        let network = self.hyperliquid_network;
+        Task::perform(fetch_income_data(network, address), move |r| {
             Message::IncomeLoaded(requested_addr.clone().into(), request_id, Box::new(r))
         })
     }

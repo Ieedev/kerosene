@@ -10,6 +10,7 @@ use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 
 use super::{SubscriptionGuard, WsCommand, WsCommandSender, get_manager};
+use crate::hyperliquid_network::HyperliquidNetwork;
 use events::parse_user_stream_message;
 use routing::{matching_user_payload_address, normalize_ws_user_address};
 use std::fmt;
@@ -36,6 +37,7 @@ pub enum WsUserDataStreamPurpose {
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct WsUserDataStreamParams {
+    pub network: HyperliquidNetwork,
     pub address: Option<String>,
     pub dexes: Vec<String>,
     pub include_mids: bool,
@@ -54,8 +56,9 @@ impl fmt::Debug for WsUserDataStreamParams {
 }
 
 impl WsUserDataStreamParams {
-    pub fn new(address: Option<String>, dexes: Vec<String>) -> Self {
+    pub fn new(network: HyperliquidNetwork, address: Option<String>, dexes: Vec<String>) -> Self {
         Self {
+            network,
             address,
             dexes,
             include_mids: true,
@@ -63,8 +66,13 @@ impl WsUserDataStreamParams {
         }
     }
 
-    pub fn without_mids(address: Option<String>, dexes: Vec<String>) -> Self {
+    pub fn without_mids(
+        network: HyperliquidNetwork,
+        address: Option<String>,
+        dexes: Vec<String>,
+    ) -> Self {
         Self {
+            network,
             address,
             dexes,
             include_mids: false,
@@ -147,6 +155,7 @@ fn user_stream_lagged_action(addr: Option<String>, skipped: u64) -> UserStreamRe
 pub fn ws_user_data_stream(
     params: &WsUserDataStreamParams,
 ) -> std::pin::Pin<Box<dyn futures::Stream<Item = KeyedUserData> + Send>> {
+    let network = params.network;
     let addr = params
         .address
         .as_deref()
@@ -155,7 +164,7 @@ pub fn ws_user_data_stream(
     let include_mids = params.include_mids;
 
     Box::pin(iced::stream::channel(20, async move |mut output| {
-        let (cmd_tx, mut msg_rx) = get_manager();
+        let (cmd_tx, mut msg_rx) = get_manager(network);
 
         let mut subscriptions = Vec::new();
         for (topic, payload) in
@@ -299,6 +308,7 @@ mod tests {
         const ADDRESS: &str = "0xabc0000000000000000000000000000000000000";
 
         let params = WsUserDataStreamParams::without_mids(
+            HyperliquidNetwork::Mainnet,
             Some(ADDRESS.to_string()),
             vec!["".to_string(), "dex-a".to_string()],
         );
@@ -308,6 +318,16 @@ mod tests {
         assert!(!rendered.contains(ADDRESS), "{rendered}");
         assert!(rendered.contains("dex-a"), "{rendered}");
         assert!(rendered.contains("include_mids: false"), "{rendered}");
+    }
+
+    #[test]
+    fn network_distinguishes_otherwise_identical_stream_params() {
+        let mainnet =
+            WsUserDataStreamParams::new(HyperliquidNetwork::Mainnet, None, vec!["".to_string()]);
+        let testnet =
+            WsUserDataStreamParams::new(HyperliquidNetwork::Testnet, None, vec!["".to_string()]);
+
+        assert_ne!(mainnet, testnet);
     }
 
     #[test]

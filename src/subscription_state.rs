@@ -18,6 +18,10 @@ impl TradingTerminal {
         self.push_timer_subscriptions(&mut subs);
         Self::push_window_subscriptions(&mut subs);
         self.push_post_window_timer_subscriptions(&mut subs);
+        subs.push(
+            iced::time::every(std::time::Duration::from_secs(10))
+                .map(|_| Message::AiOverlayRefresh),
+        );
         Subscription::batch(subs)
     }
 

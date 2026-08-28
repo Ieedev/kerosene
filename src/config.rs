@@ -17,6 +17,7 @@ mod secrets;
 mod themes;
 mod wallets;
 
+pub(crate) use crate::hyperliquid_network::HyperliquidNetwork;
 pub use clear::{ClearConfigSummary, clear_all_configs};
 #[cfg(test)]
 pub(crate) use files::installed_config_save_error_for_test;

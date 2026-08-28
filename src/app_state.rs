@@ -348,6 +348,13 @@ pub(crate) struct TradingTerminal {
     pub(crate) alfred_popup_scale: f32,
     pub(crate) read_data_provider: config::ReadDataProvider,
     pub(crate) read_data_provider_generation: u64,
+    /// Monotonically changes when the trusted Hyperliquid environment changes.
+    /// Async work captures this value so a prior environment cannot update state.
+    pub(crate) hyperliquid_network: crate::hyperliquid_network::HyperliquidNetwork,
+    pub(crate) hyperliquid_network_generation: u64,
+    pub(crate) ai_overlay: crate::ai_overlay_state::AiOverlayState,
+    pub(crate) ai_overlay_service_url: String,
+    pub(crate) ai_overlay_service_url_input: String,
     pub(crate) chart_backfill_source: config::ChartBackfillSource,
     pub(crate) display_font: config::DisplayFontConfig,
     pub(crate) monospace_font: config::DisplayFontConfig,
