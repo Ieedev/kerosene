@@ -97,14 +97,18 @@ impl TradingTerminal {
         self.symbol_search_status = None;
         let requested_at = plan.requested_at;
         let requested_symbols = plan.symbols.clone();
-        Task::perform(api::fetch_watchlist_contexts(plan.symbols), move |result| {
-            Message::SymbolSearchContextsLoaded(
-                request_id,
-                requested_symbols.clone(),
-                requested_at,
-                result,
-            )
-        })
+        let network = self.hyperliquid_network;
+        Task::perform(
+            api::fetch_watchlist_contexts(network, plan.symbols),
+            move |result| {
+                Message::SymbolSearchContextsLoaded(
+                    request_id,
+                    requested_symbols.clone(),
+                    requested_at,
+                    result,
+                )
+            },
+        )
     }
 
     pub(crate) fn symbol_search_exchange_label(symbol: &ExchangeSymbol) -> String {

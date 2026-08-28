@@ -1,5 +1,6 @@
-use super::{API_URL, CLIENT};
+use super::CLIENT;
 use crate::app_time::now_ms;
+use crate::hyperliquid_network::HyperliquidNetwork;
 
 mod model;
 mod pagination;
@@ -8,6 +9,7 @@ pub use model::{UserFill, UserFillsPage, UserFillsRequest};
 use pagination::next_user_fills_request;
 
 pub async fn fetch_user_fills(
+    network: HyperliquidNetwork,
     address: String,
     request: UserFillsRequest,
 ) -> Result<UserFillsPage, String> {
@@ -31,7 +33,7 @@ pub async fn fetch_user_fills(
     let mut retries = 0;
     let response = loop {
         let resp = client
-            .post(API_URL)
+            .post(network.info_url())
             .json(&body)
             .send()
             .await

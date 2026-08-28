@@ -1,5 +1,6 @@
-use super::{API_URL, CLIENT};
+use super::CLIENT;
 use crate::helpers::parse_finite_json_number;
+use crate::hyperliquid_network::HyperliquidNetwork;
 use serde_json::Value;
 use std::collections::BTreeSet;
 
@@ -37,10 +38,13 @@ struct AssetContextStats {
 /// `openInterest` and `markPx`, which are multiplied for notional open
 /// interest. Every family must succeed so the UI never shows a partial total as
 /// though it covered the whole exchange.
-pub(crate) async fn fetch_exchange_stats() -> Result<ExchangeStats, String> {
+pub(crate) async fn fetch_exchange_stats(
+    network: HyperliquidNetwork,
+) -> Result<ExchangeStats, String> {
     let client = CLIENT.clone();
     let dex_response = post_info(
         client.clone(),
+        network,
         serde_json::json!({ "type": "perpDexs" }),
         "perpDexs",
     )
@@ -70,7 +74,7 @@ pub(crate) async fn fetch_exchange_stats() -> Result<ExchangeStats, String> {
     let requests = families.into_iter().map(|(label, body, family)| {
         let client = client.clone();
         async move {
-            let response = post_info(client, body, &label).await?;
+            let response = post_info(client, network, body, &label).await?;
             parse_asset_context_stats(&response, family)
                 .map_err(|error| format!("{label}: {error}"))
         }
@@ -96,9 +100,14 @@ pub(crate) async fn fetch_exchange_stats() -> Result<ExchangeStats, String> {
     Ok(exchange_stats)
 }
 
-async fn post_info(client: reqwest::Client, body: Value, label: &str) -> Result<Value, String> {
+async fn post_info(
+    client: reqwest::Client,
+    network: HyperliquidNetwork,
+    body: Value,
+    label: &str,
+) -> Result<Value, String> {
     client
-        .post(API_URL)
+        .post(network.info_url())
         .json(&body)
         .send()
         .await

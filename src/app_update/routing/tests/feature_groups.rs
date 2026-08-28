@@ -54,6 +54,26 @@ fn alfred_screener_settings_and_window_routes_stay_on_feature_modules() {
 }
 
 #[test]
+fn ai_overlay_and_network_selection_routes_stay_on_feature_modules() {
+    assert_route(
+        Message::AiOverlayServiceUrlChanged("http://localhost:8765".to_string()),
+        UpdateRoute::AiOverlay,
+    );
+    assert_route(Message::SaveAiOverlayServiceUrl, UpdateRoute::AiOverlay);
+    assert_route(Message::AiOverlayRefresh, UpdateRoute::AiOverlay);
+    assert_route(
+        Message::AiOverlayLoaded(1, Ok(None)),
+        UpdateRoute::AiOverlay,
+    );
+    assert_route(
+        Message::HyperliquidNetworkSelected(
+            crate::hyperliquid_network::HyperliquidNetwork::Testnet,
+        ),
+        UpdateRoute::Preferences,
+    );
+}
+
+#[test]
 fn openrouter_routes_stay_on_openrouter_module() {
     assert_route(
         Message::OpenRouterKeyInputChanged("sentinel-secret".into()),

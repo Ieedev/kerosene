@@ -3,7 +3,7 @@ use super::super::super::{
     spot::{augment_spot_balance_mids, estimate_spot_equity},
 };
 use super::snapshot::parse_tracker_number;
-use crate::api::API_URL;
+use crate::hyperliquid_network::HyperliquidNetwork;
 
 use std::collections::HashMap;
 
@@ -72,6 +72,7 @@ pub(super) fn merge_spot_equity_fallback(
 /// Best-effort spot-equity enrichment for the direct Hyperliquid path.
 pub(super) async fn apply_spot_equity_fallback(
     client: &reqwest::Client,
+    network: HyperliquidNetwork,
     address: &str,
     equity: &mut Option<f64>,
     withdrawable: &mut Option<f64>,
@@ -79,7 +80,7 @@ pub(super) async fn apply_spot_equity_fallback(
     // Portfolio-margin clearinghouse values can be positive yet incomplete.
     // Always fetch spot state so PM detection does not depend on the magnitude
     // of those non-authoritative values.
-    let outcome = fetch_spot_equity_fallback(client, address).await;
+    let outcome = fetch_spot_equity_fallback(client, network, address).await;
     let warning = match &outcome {
         Err(error) => Some(format!(
             "Spot/portfolio-margin valuation verification unavailable: {error}"
@@ -96,10 +97,11 @@ pub(super) async fn apply_spot_equity_fallback(
 
 async fn fetch_spot_equity_fallback(
     client: &reqwest::Client,
+    network: HyperliquidNetwork,
     address: &str,
 ) -> Result<Option<SpotEquityFallback>, String> {
     let spot_resp = client
-        .post(API_URL)
+        .post(network.info_url())
         .json(&serde_json::json!({"type": "spotClearinghouseState", "user": address}))
         .send()
         .await
@@ -124,16 +126,17 @@ async fn fetch_spot_equity_fallback(
         return Ok(None);
     }
 
-    let mids = fetch_spot_fallback_mids(client).await?;
+    let mids = fetch_spot_fallback_mids(client, network).await?;
     Ok(spot_equity_fallback_from_state(&spot, &mids))
 }
 
 /// Fetch the all-mids map used to price portfolio-margin spot balances.
 pub(super) async fn fetch_spot_fallback_mids(
     client: &reqwest::Client,
+    network: HyperliquidNetwork,
 ) -> Result<HashMap<String, f64>, String> {
     let mids_resp = client
-        .post(API_URL)
+        .post(network.info_url())
         .json(&serde_json::json!({"type": "allMids", "dex": ""}))
         .send()
         .await

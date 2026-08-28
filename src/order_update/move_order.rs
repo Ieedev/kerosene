@@ -9,9 +9,14 @@ use iced::Task;
 use super::results::{ExecutionOutcomeKind, PendingMoveStatusRequest, classify_execution_result};
 
 impl TradingTerminal {
-    fn move_order_status_task(account_address: String, coin: String, oid: u64) -> Task<Message> {
+    fn move_order_status_task(
+        network: crate::hyperliquid_network::HyperliquidNetwork,
+        account_address: String,
+        coin: String,
+        oid: u64,
+    ) -> Task<Message> {
         Task::perform(
-            fetch_order_status_by_oid(account_address.clone(), oid),
+            fetch_order_status_by_oid(network, account_address.clone(), oid),
             move |result| Message::MoveOrderStatusLoaded {
                 account_address: account_address.into(),
                 coin,
@@ -99,7 +104,12 @@ impl TradingTerminal {
                 );
                 return Task::batch([
                     self.refresh_account_data(),
-                    Self::move_order_status_task(account_address, move_key.coin().to_string(), oid),
+                    Self::move_order_status_task(
+                        self.hyperliquid_network,
+                        account_address,
+                        move_key.coin().to_string(),
+                        oid,
+                    ),
                 ]);
             }
             ExecutionOutcomeKind::TransportUnknown => {
@@ -117,7 +127,12 @@ impl TradingTerminal {
                 );
                 return Task::batch([
                     self.refresh_account_data(),
-                    Self::move_order_status_task(account_address, move_key.coin().to_string(), oid),
+                    Self::move_order_status_task(
+                        self.hyperliquid_network,
+                        account_address,
+                        move_key.coin().to_string(),
+                        oid,
+                    ),
                 ]);
             }
             ExecutionOutcomeKind::AcceptedResting

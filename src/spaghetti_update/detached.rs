@@ -63,6 +63,7 @@ impl TradingTerminal {
         let hydromancer_generation = self.hydromancer_key_generation;
         let hydromancer_api_key = self.hydromancer_api_key_for_task();
         let instance_epoch = self.spaghetti_instance_epoch;
+        let network = self.hyperliquid_network;
 
         self.spaghetti_charts.insert(detached_id, detached_instance);
         self.detached_spaghetti_windows.insert(window_id, state);
@@ -71,6 +72,7 @@ impl TradingTerminal {
         let mut tasks = vec![task.map(Message::WindowOpened)];
         for symbol in &symbols_to_fetch {
             tasks.push(Self::fetch_spaghetti_candles(
+                network,
                 detached_id,
                 instance_epoch,
                 symbol,

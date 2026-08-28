@@ -164,8 +164,9 @@ impl TradingTerminal {
                         if let Some(next_request) = next_request {
                             let request_account_key = account_key.clone();
                             let request_address = address.clone();
+                            let network = self.hyperliquid_network;
                             return Task::perform(
-                                api::fetch_user_fills(address, next_request),
+                                api::fetch_user_fills(network, address, next_request),
                                 move |result| Message::JournalFillsLoaded {
                                     request_id,
                                     account_key: request_account_key.clone().into(),
@@ -705,10 +706,12 @@ impl TradingTerminal {
         let account_key = request.account_key.clone();
         let address = request.address.clone();
         let hydromancer_api_key = self.hydromancer_api_key_for_task();
+        let network = self.hyperliquid_network;
         let fetch_request = request.clone();
 
         Task::perform(
             api::fetch_chart_backfill_candles(api::ChartCandleFetchRequest {
+                network,
                 source: fetch_request.source,
                 hydromancer_api_key,
                 schwab_access_token: zeroize::Zeroizing::new(String::new()),

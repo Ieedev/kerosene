@@ -113,7 +113,11 @@ impl TradingTerminal {
         Task::batch([
             account_refresh_task,
             Task::perform(
-                fetch_order_status_by_cloid(account_address, request_cloid),
+                fetch_order_status_by_cloid(
+                    self.hyperliquid_network,
+                    account_address,
+                    request_cloid,
+                ),
                 move |result| Message::ChaseOrderStatusLoaded {
                     chase_id,
                     cloid,
@@ -208,6 +212,7 @@ impl TradingTerminal {
                             market_type,
                         );
                         let cancel_task = cancel_order_task(
+                            self.hyperliquid_network,
                             request.agent_key,
                             request.asset,
                             request.oid,

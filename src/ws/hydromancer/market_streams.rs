@@ -44,13 +44,20 @@ enum HydromancerCandleStreamEvent {
 // ---------------------------------------------------------------------------
 
 pub fn ws_hydromancer_book_stream_keyed_events(
-    params: &(HydromancerStreamKey, u64, String, BookSigfigs),
+    params: &(
+        crate::hyperliquid_network::HyperliquidNetwork,
+        HydromancerStreamKey,
+        u64,
+        String,
+        BookSigfigs,
+    ),
 ) -> KeyedBookEventStream {
-    let stream_key = params.0.clone();
-    let hydromancer_key_generation = params.0.generation();
-    let id = params.1;
-    let coin = params.2.clone();
-    let sigfigs = params.3;
+    let network = params.0;
+    let stream_key = params.1.clone();
+    let hydromancer_key_generation = params.1.generation();
+    let id = params.2;
+    let coin = params.3.clone();
+    let sigfigs = params.4;
 
     Box::pin(iced::stream::channel(10, async move |mut output| {
         let (cmd_tx, mut msg_rx) = get_hydromancer_manager(stream_key);
@@ -77,6 +84,7 @@ pub fn ws_hydromancer_book_stream_keyed_events(
                         if hydromancer_market_control_should_fallback(&control) {
                             drop(guard);
                             let mut fallback = crate::ws::ws_book_stream_keyed_events(&(
+                                network,
                                 id,
                                 coin.clone(),
                                 sigfigs,
@@ -177,12 +185,18 @@ pub fn ws_hydromancer_book_stream_keyed_events(
 }
 
 pub fn ws_hydromancer_asset_ctx_stream_keyed(
-    params: &(HydromancerStreamKey, u64, String),
+    params: &(
+        crate::hyperliquid_network::HyperliquidNetwork,
+        HydromancerStreamKey,
+        u64,
+        String,
+    ),
 ) -> KeyedAssetContextStream {
-    let stream_key = params.0.clone();
-    let id = params.1;
-    let coin = params.2.clone();
-    let inner = hydromancer_asset_ctx_stream(stream_key, coin.clone());
+    let network = params.0;
+    let stream_key = params.1.clone();
+    let id = params.2;
+    let coin = params.3.clone();
+    let inner = hydromancer_asset_ctx_stream(network, stream_key, coin.clone());
     Box::pin(futures::StreamExt::map(inner, move |event| match event {
         HydromancerAssetCtxStreamEvent::Item(_symbol, hydromancer_key_generation, ctx) => {
             KeyedAssetContextStreamEvent::Item(id, coin.clone(), hydromancer_key_generation, ctx)
@@ -200,10 +214,14 @@ pub fn ws_hydromancer_asset_ctx_stream_keyed(
 }
 
 pub fn ws_hydromancer_asset_ctx_stream_symbol(
-    params: &(HydromancerStreamKey, String),
+    params: &(
+        crate::hyperliquid_network::HyperliquidNetwork,
+        HydromancerStreamKey,
+        String,
+    ),
 ) -> SymbolAssetContextStream {
-    let symbol = params.1.clone();
-    let inner = hydromancer_asset_ctx_stream(params.0.clone(), params.1.clone());
+    let symbol = params.2.clone();
+    let inner = hydromancer_asset_ctx_stream(params.0, params.1.clone(), params.2.clone());
     Box::pin(futures::StreamExt::map(inner, move |event| match event {
         HydromancerAssetCtxStreamEvent::Item(symbol, hydromancer_key_generation, ctx) => {
             SymbolAssetContextStreamEvent::Item(symbol, hydromancer_key_generation, ctx)
@@ -220,13 +238,20 @@ pub fn ws_hydromancer_asset_ctx_stream_symbol(
 }
 
 pub fn ws_hydromancer_candle_stream_keyed(
-    params: &(HydromancerStreamKey, u64, String, String),
+    params: &(
+        crate::hyperliquid_network::HyperliquidNetwork,
+        HydromancerStreamKey,
+        u64,
+        String,
+        String,
+    ),
 ) -> KeyedCandleStream {
-    let stream_key = params.0.clone();
-    let id = params.1;
-    let coin = params.2.clone();
-    let interval = params.3.clone();
-    let inner = hydromancer_candle_stream(stream_key, coin.clone(), interval.clone());
+    let network = params.0;
+    let stream_key = params.1.clone();
+    let id = params.2;
+    let coin = params.3.clone();
+    let interval = params.4.clone();
+    let inner = hydromancer_candle_stream(network, stream_key, coin.clone(), interval.clone());
     Box::pin(futures::StreamExt::map(inner, move |event| match event {
         HydromancerCandleStreamEvent::Item(hydromancer_key_generation, candle) => {
             KeyedCandleStreamEvent::Item(
@@ -252,6 +277,7 @@ pub fn ws_hydromancer_candle_stream_keyed(
 
 pub fn ws_hydromancer_spaghetti_candle_stream(
     params: &(
+        crate::hyperliquid_network::HyperliquidNetwork,
         HydromancerStreamKey,
         u64,
         u64,
@@ -261,15 +287,16 @@ pub fn ws_hydromancer_spaghetti_candle_stream(
         Option<crate::timeframe::Timeframe>,
     ),
 ) -> SpaghettiCandleStream {
-    let stream_key = params.0.clone();
-    let id = params.1;
-    let instance_epoch = params.2;
-    let coin = params.3.clone();
-    let timeframe = params.4;
-    let session = params.5;
-    let session_granularity = params.6;
-    let interval = params.4.api_str().to_string();
-    let inner = hydromancer_candle_stream(stream_key, coin.clone(), interval);
+    let network = params.0;
+    let stream_key = params.1.clone();
+    let id = params.2;
+    let instance_epoch = params.3;
+    let coin = params.4.clone();
+    let timeframe = params.5;
+    let session = params.6;
+    let session_granularity = params.7;
+    let interval = params.5.api_str().to_string();
+    let inner = hydromancer_candle_stream(network, stream_key, coin.clone(), interval);
     Box::pin(futures::StreamExt::map(inner, move |event| match event {
         HydromancerCandleStreamEvent::Item(hydromancer_key_generation, candle) => {
             SpaghettiCandleStreamEvent::Item {
@@ -300,6 +327,7 @@ pub fn ws_hydromancer_spaghetti_candle_stream(
 }
 
 fn hydromancer_asset_ctx_stream(
+    network: crate::hyperliquid_network::HyperliquidNetwork,
     stream_key: HydromancerStreamKey,
     coin: String,
 ) -> WsStream<HydromancerAssetCtxStreamEvent> {
@@ -329,7 +357,7 @@ fn hydromancer_asset_ctx_stream(
                         if hydromancer_market_control_should_fallback(&control) {
                             drop(guard);
                             let mut fallback =
-                                crate::ws::ws_asset_ctx_stream_symbol(&(coin.clone(),));
+                                crate::ws::ws_asset_ctx_stream_symbol(&(network, coin.clone()));
                             while let Some(event) = fallback.next().await {
                                 let event = match event {
                                     SymbolAssetContextStreamEvent::Item(
@@ -414,6 +442,7 @@ fn hydromancer_asset_ctx_stream(
 }
 
 fn hydromancer_candle_stream(
+    network: crate::hyperliquid_network::HyperliquidNetwork,
     stream_key: HydromancerStreamKey,
     coin: String,
     interval: String,
@@ -444,6 +473,7 @@ fn hydromancer_candle_stream(
                         if hydromancer_market_control_should_fallback(&control) {
                             drop(guard);
                             let mut fallback = crate::ws::ws_candle_stream_keyed(&(
+                                network,
                                 0,
                                 coin.clone(),
                                 interval.clone(),

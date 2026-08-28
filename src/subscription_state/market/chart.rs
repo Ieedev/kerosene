@@ -84,7 +84,7 @@ impl TradingTerminal {
                 };
                 subs.push(
                     Subscription::run_with(
-                        (api_key, id, symbol, interval),
+                        (self.hyperliquid_network, api_key, id, symbol, interval),
                         ws_hydromancer_candle_stream_keyed,
                     )
                     .with(stream_source_context)
@@ -92,9 +92,12 @@ impl TradingTerminal {
                 );
             } else {
                 subs.push(
-                    Subscription::run_with((id, symbol, interval), ws_candle_stream_keyed)
-                        .with(source_context)
-                        .map(chart_candle_stream_event_message),
+                    Subscription::run_with(
+                        (self.hyperliquid_network, id, symbol, interval),
+                        ws_candle_stream_keyed,
+                    )
+                    .with(source_context)
+                    .map(chart_candle_stream_event_message),
                 );
             }
         }
@@ -102,7 +105,7 @@ impl TradingTerminal {
             if let Some(api_key) = hydromancer_read_provider_key.clone() {
                 subs.push(
                     Subscription::run_with(
-                        (api_key, id, symbol),
+                        (self.hyperliquid_network, api_key, id, symbol),
                         ws_hydromancer_asset_ctx_stream_keyed,
                     )
                     .with(source_context)
@@ -110,9 +113,12 @@ impl TradingTerminal {
                 );
             } else {
                 subs.push(
-                    Subscription::run_with((id, symbol), ws_asset_ctx_stream_keyed)
-                        .with(source_context)
-                        .map(chart_asset_ctx_stream_event_message),
+                    Subscription::run_with(
+                        (self.hyperliquid_network, id, symbol),
+                        ws_asset_ctx_stream_keyed,
+                    )
+                    .with(source_context)
+                    .map(chart_asset_ctx_stream_event_message),
                 );
             }
         }

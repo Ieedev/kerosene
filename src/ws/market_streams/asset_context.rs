@@ -1,4 +1,5 @@
 use crate::account::AssetContext;
+use crate::hyperliquid_network::HyperliquidNetwork;
 use crate::ws::{SubscriptionGuard, WsCommand, WsStream, get_manager};
 
 use super::{KeyedAssetContextStreamEvent, SymbolAssetContextStreamEvent, WsStreamEvent};
@@ -38,12 +39,13 @@ fn parse_active_asset_ctx(
 }
 
 fn ws_asset_ctx_stream(
+    network: HyperliquidNetwork,
     coin: &str,
 ) -> std::pin::Pin<Box<dyn futures::Stream<Item = WsStreamEvent<AssetContext>> + Send>> {
     let coin = coin.to_string();
 
     Box::pin(iced::stream::channel(10, async move |mut output| {
-        let (cmd_tx, mut msg_rx) = get_manager();
+        let (cmd_tx, mut msg_rx) = get_manager(network);
 
         let topic = format!("activeAssetCtx:{}", coin);
         let payload = serde_json::json!({
@@ -102,10 +104,12 @@ fn ws_asset_ctx_stream(
     }))
 }
 
-pub fn ws_asset_ctx_stream_keyed(params: &(u64, String)) -> WsStream<KeyedAssetContextStreamEvent> {
-    let chart_id = params.0;
-    let coin = params.1.clone();
-    let inner = ws_asset_ctx_stream(&params.1);
+pub fn ws_asset_ctx_stream_keyed(
+    params: &(HyperliquidNetwork, u64, String),
+) -> WsStream<KeyedAssetContextStreamEvent> {
+    let chart_id = params.1;
+    let coin = params.2.clone();
+    let inner = ws_asset_ctx_stream(params.0, &params.2);
     Box::pin(futures::StreamExt::map(inner, move |event| match event {
         WsStreamEvent::Item(ctx) => {
             KeyedAssetContextStreamEvent::Item(chart_id, coin.clone(), None, Box::new(ctx))
@@ -119,9 +123,11 @@ pub fn ws_asset_ctx_stream_keyed(params: &(u64, String)) -> WsStream<KeyedAssetC
     }))
 }
 
-pub fn ws_asset_ctx_stream_symbol(params: &(String,)) -> WsStream<SymbolAssetContextStreamEvent> {
-    let coin = params.0.clone();
-    let inner = ws_asset_ctx_stream(&params.0);
+pub fn ws_asset_ctx_stream_symbol(
+    params: &(HyperliquidNetwork, String),
+) -> WsStream<SymbolAssetContextStreamEvent> {
+    let coin = params.1.clone();
+    let inner = ws_asset_ctx_stream(params.0, &params.1);
     Box::pin(futures::StreamExt::map(inner, move |event| match event {
         WsStreamEvent::Item(ctx) => {
             SymbolAssetContextStreamEvent::Item(coin.clone(), None, Box::new(ctx))

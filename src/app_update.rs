@@ -11,6 +11,7 @@ impl TradingTerminal {
         let _theme = self.theme();
         match message_route(&message) {
             UpdateRoute::Agent => self.update_agent(message),
+            UpdateRoute::AiOverlay => self.update_ai_overlay(message),
             UpdateRoute::Alfred => self.update_alfred(message),
             UpdateRoute::Layout => self.update_layout(message),
             UpdateRoute::PaneInteractions => self.update_pane_interactions(message),

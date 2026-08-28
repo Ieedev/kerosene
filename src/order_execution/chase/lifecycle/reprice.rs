@@ -340,10 +340,12 @@ impl TradingTerminal {
         self.order_status = Some((format!("{status} {oid}"), false));
 
         self.invalidate_spot_balances_after_exchange_dispatch(&account_address, market_type);
-        modify_order_task(key, prepared, move |r| Message::ChaseModifyResult {
-            chase_id,
-            oid,
-            result: Box::new(r),
+        modify_order_task(self.hyperliquid_network, key, prepared, move |r| {
+            Message::ChaseModifyResult {
+                chase_id,
+                oid,
+                result: Box::new(r),
+            }
         })
     }
 }

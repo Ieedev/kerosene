@@ -82,10 +82,12 @@ impl TradingTerminal {
                     &account_address,
                     market_type,
                 );
-                cancel_order_task(key, asset, oid, move |r| Message::ChaseCancelResult {
-                    chase_id,
-                    oid,
-                    result: Box::new(r),
+                cancel_order_task(self.hyperliquid_network, key, asset, oid, move |r| {
+                    Message::ChaseCancelResult {
+                        chase_id,
+                        oid,
+                        result: Box::new(r),
+                    }
                 })
             }
             StopChaseAction::AwaitPlaceResult => {
@@ -212,10 +214,12 @@ impl TradingTerminal {
         };
         self.set_order_status_toast_on_error(format!("{reason}: cancelling order {oid}"), is_error);
         self.invalidate_spot_balances_after_exchange_dispatch(&account_address, market_type);
-        cancel_order_task(key, asset, oid, move |r| Message::ChaseCancelResult {
-            chase_id,
-            oid,
-            result: Box::new(r),
+        cancel_order_task(self.hyperliquid_network, key, asset, oid, move |r| {
+            Message::ChaseCancelResult {
+                chase_id,
+                oid,
+                result: Box::new(r),
+            }
         })
     }
 

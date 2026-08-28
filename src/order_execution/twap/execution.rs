@@ -308,9 +308,11 @@ impl TradingTerminal {
         let request = prepared.place_request_with_existing_cloid(pending_slice.cloid);
 
         self.invalidate_spot_balances_after_exchange_dispatch(&account_address, market_type);
-        place_order_task(key, request, move |result| Message::TwapSliceResult {
-            twap_id,
-            result: Box::new(result),
+        place_order_task(self.hyperliquid_network, key, request, move |result| {
+            Message::TwapSliceResult {
+                twap_id,
+                result: Box::new(result),
+            }
         })
     }
 }

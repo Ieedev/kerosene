@@ -1,5 +1,6 @@
-use super::{API_URL, CLIENT, KEROSENE_USER_AGENT};
+use super::{CLIENT, KEROSENE_USER_AGENT};
 use crate::config::ChartBackfillSource;
+use crate::hyperliquid_network::HyperliquidNetwork;
 use crate::timeframe::Timeframe;
 use reqwest::header::{CONTENT_TYPE, USER_AGENT};
 use serde::Serialize;
@@ -33,6 +34,7 @@ pub(crate) enum CandleFetchPolicy {
 /// This intentionally does not implement `Debug`: it owns provider credentials
 /// that must never be exposed through logs or diagnostics.
 pub(crate) struct ChartCandleFetchRequest {
+    pub(crate) network: HyperliquidNetwork,
     pub(crate) source: ChartBackfillSource,
     pub(crate) hydromancer_api_key: Zeroizing<String>,
     pub(crate) schwab_access_token: Zeroizing<String>,
@@ -67,6 +69,7 @@ struct CandleRequestInner {
 }
 
 pub async fn fetch_candles(
+    network: HyperliquidNetwork,
     coin: String,
     interval: String,
     start_time: u64,
@@ -80,6 +83,7 @@ pub async fn fetch_candles(
     }
 
     fetch_hyperliquid_candles(
+        network,
         coin,
         interval,
         start_time,
@@ -93,6 +97,7 @@ pub(crate) async fn fetch_chart_backfill_candles(
     request: ChartCandleFetchRequest,
 ) -> Result<Vec<Candle>, String> {
     let ChartCandleFetchRequest {
+        network,
         source,
         hydromancer_api_key,
         schwab_access_token,
@@ -111,7 +116,7 @@ pub(crate) async fn fetch_chart_backfill_candles(
             Err("1s candles require Hydromancer chart backfill".to_string())
         }
         ChartBackfillSource::Hyperliquid => {
-            fetch_hyperliquid_candles(coin, interval, start_time, end_time, policy).await
+            fetch_hyperliquid_candles(network, coin, interval, start_time, end_time, policy).await
         }
         ChartBackfillSource::Schwab => {
             fetch_schwab_candles(
@@ -131,8 +136,10 @@ pub(crate) async fn fetch_chart_backfill_candles(
                     return Err("Hydromancer API key required for 1s candles".to_string());
                 }
 
-                return fetch_hyperliquid_candles(coin, interval, start_time, end_time, policy)
-                    .await;
+                return fetch_hyperliquid_candles(
+                    network, coin, interval, start_time, end_time, policy,
+                )
+                .await;
             }
 
             if policy.allows_cache()
@@ -167,6 +174,7 @@ pub(crate) async fn fetch_chart_backfill_candles(
                     }
 
                     return fetch_hyperliquid_candles(
+                        network,
                         coin,
                         interval,
                         start_time,
@@ -240,6 +248,7 @@ async fn fetch_schwab_candles(
 }
 
 async fn fetch_hyperliquid_candles(
+    network: HyperliquidNetwork,
     coin: String,
     interval: String,
     start_time: u64,
@@ -259,7 +268,7 @@ async fn fetch_hyperliquid_candles(
     }
 
     let candles = fetch_candles_from_endpoint(
-        API_URL,
+        network.info_url(),
         None,
         coin.clone(),
         interval.clone(),

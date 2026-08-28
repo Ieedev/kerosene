@@ -47,6 +47,7 @@ impl TradingTerminal {
     /// Fetch hourly/daily/weekly/monthly candles for macro indicators, tagged with
     /// the chart ID and symbol that requested them.
     pub(crate) fn fetch_macro_candles_tasks(
+        network: crate::hyperliquid_network::HyperliquidNetwork,
         chart_id: ChartId,
         request_id: u64,
         coin: &str,
@@ -66,6 +67,7 @@ impl TradingTerminal {
         vec![
             Task::perform(
                 api::fetch_candles(
+                    network,
                     c1,
                     "1h".to_string(),
                     now_ms.saturating_sub(Timeframe::H1.lookback_ms()),
@@ -77,6 +79,7 @@ impl TradingTerminal {
             ),
             Task::perform(
                 api::fetch_candles(
+                    network,
                     c2,
                     "1d".to_string(),
                     now_ms.saturating_sub(Timeframe::D1.lookback_ms()),
@@ -88,6 +91,7 @@ impl TradingTerminal {
             ),
             Task::perform(
                 api::fetch_candles(
+                    network,
                     c3,
                     "1w".to_string(),
                     now_ms.saturating_sub(Timeframe::W1.lookback_ms()),
@@ -99,6 +103,7 @@ impl TradingTerminal {
             ),
             Task::perform(
                 api::fetch_candles(
+                    network,
                     c4,
                     "1M".to_string(),
                     now_ms.saturating_sub(Timeframe::Mo1.lookback_ms()),
@@ -123,7 +128,7 @@ impl TradingTerminal {
         else {
             return Vec::new();
         };
-        Self::fetch_macro_candles_tasks(chart_id, request_id, coin)
+        Self::fetch_macro_candles_tasks(self.hyperliquid_network, chart_id, request_id, coin)
     }
 
     pub(crate) fn build_candle_fetch_request(
@@ -241,6 +246,7 @@ impl TradingTerminal {
     }
 
     pub(crate) fn fetch_candles_task(
+        network: crate::hyperliquid_network::HyperliquidNetwork,
         request: CandleFetchRequest,
         hydromancer_api_key: Zeroizing<String>,
         schwab_access_token: Zeroizing<String>,
@@ -254,6 +260,7 @@ impl TradingTerminal {
                 }
                 let policy = fetch_request.fetch_policy();
                 api::fetch_chart_backfill_candles(api::ChartCandleFetchRequest {
+                    network,
                     source: fetch_request.source,
                     hydromancer_api_key,
                     schwab_access_token,
@@ -295,6 +302,7 @@ impl TradingTerminal {
     }
 
     pub(crate) fn fetch_secondary_candles_task(
+        network: crate::hyperliquid_network::HyperliquidNetwork,
         request: CandleFetchRequest,
         hydromancer_api_key: Zeroizing<String>,
         schwab_access_token: Zeroizing<String>,
@@ -308,6 +316,7 @@ impl TradingTerminal {
                 }
                 let policy = fetch_request.fetch_policy();
                 api::fetch_chart_backfill_candles(api::ChartCandleFetchRequest {
+                    network,
                     source: fetch_request.source,
                     hydromancer_api_key,
                     schwab_access_token,
@@ -345,6 +354,7 @@ impl TradingTerminal {
             }
         }
         Self::fetch_candles_task(
+            self.hyperliquid_network,
             request,
             self.hydromancer_api_key_for_task(),
             self.schwab.access_token_for_task(),
@@ -390,6 +400,7 @@ impl TradingTerminal {
             instance.secondary_candle_ws_updates_during_fetch.clear();
         }
         Self::fetch_secondary_candles_task(
+            self.hyperliquid_network,
             request,
             self.hydromancer_api_key_for_task(),
             self.schwab.access_token_for_task(),
@@ -501,6 +512,7 @@ impl TradingTerminal {
             .into_iter()
             .map(|request| {
                 Self::fetch_candles_task(
+                    self.hyperliquid_network,
                     request,
                     hydromancer_key.clone(),
                     schwab_access_token.clone(),
@@ -509,6 +521,7 @@ impl TradingTerminal {
             .collect();
         tasks.extend(secondary_chart_requests.into_iter().map(|request| {
             Self::fetch_secondary_candles_task(
+                self.hyperliquid_network,
                 request,
                 hydromancer_key.clone(),
                 schwab_access_token.clone(),
@@ -545,6 +558,7 @@ impl TradingTerminal {
         tasks.extend(spaghetti_requests.into_iter().map(
             |(chart_id, symbol, timeframe, session, session_granularity)| {
                 Self::fetch_spaghetti_candles(
+                    self.hyperliquid_network,
                     chart_id,
                     spaghetti_instance_epoch,
                     &symbol,

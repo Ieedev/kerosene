@@ -155,8 +155,13 @@ async fn update_hydromancer_api_latency_once(api_key: Zeroizing<String>) {
 /// Hydromancer API key is configured. Yields `Message::NoOp` after each probe;
 /// the status bar ticks every second and re-reads telemetry, so the updated
 /// latency surfaces without a dedicated message.
-pub fn ws_hydromancer_api_latency_probe(stream_key: &HydromancerStreamKey) -> WsStream<Message> {
-    let api_key = stream_key.api_key_for_task();
+pub fn ws_hydromancer_api_latency_probe(
+    stream_key: &(
+        crate::hyperliquid_network::HyperliquidNetwork,
+        HydromancerStreamKey,
+    ),
+) -> WsStream<Message> {
+    let api_key = stream_key.1.api_key_for_task();
     Box::pin(iced::stream::channel(1, async move |mut output| {
         loop {
             update_hydromancer_api_latency_once(api_key.clone()).await;

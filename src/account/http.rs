@@ -1,5 +1,5 @@
-use crate::api::API_URL;
 use crate::helpers::sensitive_response_excerpt;
+use crate::hyperliquid_network::HyperliquidNetwork;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
@@ -11,6 +11,7 @@ const ACCOUNT_HTTP_ERROR_PREVIEW_CHARS: usize = 160;
 
 pub(super) async fn post_info_json_with_retries(
     client: reqwest::Client,
+    network: HyperliquidNetwork,
     label: &'static str,
     payload: Value,
 ) -> Result<Value, String> {
@@ -21,7 +22,7 @@ pub(super) async fn post_info_json_with_retries(
             tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
         }
 
-        let response = match client.post(API_URL).json(&payload).send().await {
+        let response = match client.post(network.info_url()).json(&payload).send().await {
             Ok(response) => response,
             Err(e) => {
                 last_error = format!("{label} request failed: {e}");

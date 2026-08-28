@@ -164,8 +164,9 @@ impl TradingTerminal {
         }
 
         let request_id = self.built_in_layout_state.begin_request(layout);
+        let network = self.hyperliquid_network;
         Task::perform(
-            api::fetch_watchlist_contexts_uncached(symbols),
+            api::fetch_watchlist_contexts_uncached(network, symbols),
             move |result| Message::BuiltInLayoutContextsLoaded(request_id, layout, result),
         )
     }

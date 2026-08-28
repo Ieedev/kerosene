@@ -37,6 +37,7 @@ fn boot_chart_instances_restores_trade_marker_toggle() {
     }];
 
     let (charts, tasks) = TradingTerminal::boot_chart_instances(
+        crate::hyperliquid_network::HyperliquidNetwork::Mainnet,
         &configs,
         &std::collections::HashSet::new(),
         crate::config::ChartBackfillSource::Hyperliquid,
@@ -89,6 +90,7 @@ fn boot_defers_legacy_api_named_spaghetti_series_until_metadata_migration() {
     config.symbols = vec!["@0".to_string()];
 
     let (charts, tasks) = TradingTerminal::boot_spaghetti_instances(
+        crate::hyperliquid_network::HyperliquidNetwork::Mainnet,
         &[config],
         &std::collections::HashSet::new(),
         crate::config::ChartBackfillSource::Hyperliquid,
@@ -108,6 +110,7 @@ fn boot_defers_legacy_regular_chart_series_until_metadata_migration() {
     config.secondary_symbol = Some("@0".to_string());
 
     let (charts, tasks) = TradingTerminal::boot_chart_instances(
+        crate::hyperliquid_network::HyperliquidNetwork::Mainnet,
         &[config],
         &std::collections::HashSet::new(),
         crate::config::ChartBackfillSource::Hyperliquid,

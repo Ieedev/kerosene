@@ -208,14 +208,18 @@ impl TradingTerminal {
             instance.pending_request = Some(request.clone());
         }
 
-        Self::fetch_session_data_task(request, now_ms)
+        Self::fetch_session_data_task(self.hyperliquid_network, request, now_ms)
     }
 
-    fn fetch_session_data_task(request: SessionDataRequest, now_ms: u64) -> Task<Message> {
+    fn fetch_session_data_task(
+        network: crate::hyperliquid_network::HyperliquidNetwork,
+        request: SessionDataRequest,
+        now_ms: u64,
+    ) -> Task<Message> {
         let start_time = now_ms.saturating_sub(request.lookback.days().saturating_mul(DAY_MS));
         let symbol = request.symbol.clone();
         Task::perform(
-            async move { fetch_session_data_candles(symbol, start_time, now_ms).await },
+            async move { fetch_session_data_candles(network, symbol, start_time, now_ms).await },
             move |result| Message::SessionDataCandlesLoaded(request.clone(), result),
         )
     }
@@ -366,14 +370,23 @@ impl TradingTerminal {
 }
 
 async fn fetch_session_data_candles(
+    network: crate::hyperliquid_network::HyperliquidNetwork,
     symbol: String,
     start_time: u64,
     end_time: u64,
 ) -> Result<SessionDataCandles, String> {
-    let daily = api::fetch_candles(symbol.clone(), "1d".to_string(), start_time, end_time).await?;
+    let daily = api::fetch_candles(
+        network,
+        symbol.clone(),
+        "1d".to_string(),
+        start_time,
+        end_time,
+    )
+    .await?;
     let mut intraday = Vec::new();
     for (chunk_start, chunk_end) in intraday_chunk_ranges(start_time, end_time) {
         let chunk = api::fetch_candles(
+            network,
             symbol.clone(),
             INTRADAY_INTERVAL.to_string(),
             chunk_start,

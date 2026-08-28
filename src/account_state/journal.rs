@@ -63,14 +63,16 @@ impl TradingTerminal {
         let request_account_key = account_key.clone();
         let request_address = address.clone();
 
-        Task::perform(api::fetch_user_fills(address, request), move |result| {
-            Message::JournalFillsLoaded {
+        let network = self.hyperliquid_network;
+        Task::perform(
+            api::fetch_user_fills(network, address, request),
+            move |result| Message::JournalFillsLoaded {
                 request_id,
                 account_key: request_account_key.clone().into(),
                 address: request_address.clone().into(),
                 result,
-            }
-        })
+            },
+        )
     }
 }
 

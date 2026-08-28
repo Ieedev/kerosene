@@ -77,10 +77,23 @@ impl TradingTerminal {
             hydromancer_configured,
         );
 
-        row![status_element_tooltip(
-            status_badge(label, color, pulse, self.spinner_phase),
-            detail,
-        )]
+        row![
+            status_element_tooltip(
+                status_badge(label, color, pulse, self.spinner_phase),
+                detail,
+            ),
+            status_badge(
+                self.hyperliquid_network.label(),
+                if self.hyperliquid_network.is_testnet() {
+                    theme.palette().warning
+                } else {
+                    theme.palette().success
+                },
+                false,
+                self.spinner_phase,
+            )
+        ]
+        .spacing(6)
         .align_y(Alignment::Center)
     }
 

@@ -33,6 +33,7 @@ impl TradingTerminal {
             subs.push(
                 Subscription::run_with(
                     (
+                        self.hyperliquid_network,
                         stream_key.clone(),
                         POSITION_PNL_BOOK_STREAM_ID,
                         symbol,

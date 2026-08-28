@@ -1,4 +1,5 @@
-use super::{API_URL, CLIENT};
+use super::CLIENT;
+use crate::hyperliquid_network::HyperliquidNetwork;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::Value;
 use std::fmt;
@@ -77,7 +78,9 @@ impl ExchangeSymbolsPayload {
 
 /// Fetch all tradeable symbols (perps + spot + outcomes) by combining
 /// allPerpMetas, perpConciseAnnotations, perpDexs, spotMeta, and outcomeMeta.
-pub async fn fetch_exchange_symbols() -> Result<ExchangeSymbolsPayload, String> {
+pub async fn fetch_exchange_symbols(
+    network: HyperliquidNetwork,
+) -> Result<ExchangeSymbolsPayload, String> {
     let client = CLIENT.clone();
     let perp_client = client.clone();
     let spot_client = client.clone();
@@ -88,23 +91,24 @@ pub async fn fetch_exchange_symbols() -> Result<ExchangeSymbolsPayload, String> 
     let (perp_result, spot_result, outcome_result) = futures::join!(
         async move {
             let (metas_raw, annotations_raw, dexs_raw) = futures::try_join!(
-                post_info_value(perp_client.clone(), "allPerpMetas"),
-                post_info_value(perp_client.clone(), "perpConciseAnnotations"),
-                post_info_value(perp_client, "perpDexs"),
+                post_info_value(perp_client.clone(), network, "allPerpMetas"),
+                post_info_value(perp_client.clone(), network, "perpConciseAnnotations"),
+                post_info_value(perp_client, network, "perpDexs"),
             )?;
             let mut symbols = Vec::new();
             append_perp_symbols(&mut symbols, &metas_raw, &annotations_raw, &dexs_raw)?;
             Ok::<_, String>(symbols)
         },
         async move {
-            let spot_meta = post_info_value(spot_client, "spotMeta").await?;
+            let spot_meta = post_info_value(spot_client, network, "spotMeta").await?;
             let mut symbols = Vec::new();
             append_spot_symbols(&mut symbols, &spot_meta)?;
             Ok::<_, String>(symbols)
         },
         async move {
             let outcome_meta =
-                post_info_typed::<OutcomeMetaResponse>(outcome_client, "outcomeMeta").await?;
+                post_info_typed::<OutcomeMetaResponse>(outcome_client, network, "outcomeMeta")
+                    .await?;
             let mut symbols = Vec::new();
             append_outcome_symbols(&mut symbols, outcome_meta);
             Ok::<_, String>(symbols)
@@ -143,13 +147,15 @@ fn payload_from_source_results(
     }
 }
 
-pub async fn fetch_exchange_symbols_cached() -> Result<ExchangeSymbolsPayload, String> {
+pub async fn fetch_exchange_symbols_cached(
+    network: HyperliquidNetwork,
+) -> Result<ExchangeSymbolsPayload, String> {
     let now_ms = crate::app_time::now_ms();
     if let Ok(Some(payload)) = crate::api_cache::load_fresh_exchange_symbols(now_ms) {
         return Ok(mark_payload_loaded_from_cache(payload));
     }
 
-    fetch_exchange_symbols().await
+    fetch_exchange_symbols(network).await
 }
 
 fn mark_payload_loaded_from_cache(mut payload: ExchangeSymbolsPayload) -> ExchangeSymbolsPayload {
@@ -163,17 +169,19 @@ fn info_request_payload(request_type: &'static str) -> serde_json::Value {
 
 async fn post_info_value(
     client: reqwest::Client,
+    network: HyperliquidNetwork,
     request_type: &'static str,
 ) -> Result<Value, String> {
-    post_info_typed(client, request_type).await
+    post_info_typed(client, network, request_type).await
 }
 
 async fn post_info_typed<T: DeserializeOwned>(
     client: reqwest::Client,
+    network: HyperliquidNetwork,
     request_type: &'static str,
 ) -> Result<T, String> {
     let response = client
-        .post(API_URL)
+        .post(network.info_url())
         .json(&info_request_payload(request_type))
         .send()
         .await

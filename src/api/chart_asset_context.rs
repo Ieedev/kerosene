@@ -1,5 +1,6 @@
-use super::{API_URL, CLIENT};
+use super::CLIENT;
 use crate::account::AssetContext;
+use crate::hyperliquid_network::HyperliquidNetwork;
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -23,14 +24,17 @@ use std::collections::HashMap;
 /// symbols are looked up in `spotMetaAndAssetCtxs`. Returns `Ok(None)` for
 /// symbols that have no asset context here (composite `#`, or a coin absent
 /// from the universe).
-pub async fn fetch_chart_asset_context(symbol: String) -> Result<Option<AssetContext>, String> {
+pub async fn fetch_chart_asset_context(
+    network: HyperliquidNetwork,
+    symbol: String,
+) -> Result<Option<AssetContext>, String> {
     if symbol.is_empty() || symbol.starts_with('#') {
         return Ok(None);
     }
     // Spot pairs are keyed "@{index}", except pairs the API names directly
     // ("PURR/USDC"), whose keys carry the "{base}/{quote}" slash.
     if symbol.starts_with('@') || symbol.contains('/') {
-        return fetch_spot_chart_asset_context(symbol).await;
+        return fetch_spot_chart_asset_context(network, symbol).await;
     }
 
     let dex = symbol.split_once(':').map(|(dex, _)| dex.to_string());
@@ -42,7 +46,7 @@ pub async fn fetch_chart_asset_context(symbol: String) -> Result<Option<AssetCon
 
     let resp: Value = CLIENT
         .clone()
-        .post(API_URL)
+        .post(network.info_url())
         .json(&body)
         .send()
         .await
@@ -56,8 +60,11 @@ pub async fn fetch_chart_asset_context(symbol: String) -> Result<Option<AssetCon
     Ok(parse_chart_asset_context(&resp, &symbol, dex.as_deref()))
 }
 
-async fn fetch_spot_chart_asset_context(symbol: String) -> Result<Option<AssetContext>, String> {
-    let mut contexts = fetch_spot_chart_asset_contexts(vec![symbol.clone()]).await?;
+async fn fetch_spot_chart_asset_context(
+    network: HyperliquidNetwork,
+    symbol: String,
+) -> Result<Option<AssetContext>, String> {
+    let mut contexts = fetch_spot_chart_asset_contexts(network, vec![symbol.clone()]).await?;
     Ok(contexts
         .drain(..)
         .find_map(|(context_symbol, context)| (context_symbol == symbol).then_some(context)))
@@ -68,6 +75,7 @@ async fn fetch_spot_chart_asset_context(symbol: String) -> Result<Option<AssetCo
 /// spot universe, so issuing one request per chart wastes the shared REST rate
 /// limit and turns transient failures into a retry storm.
 pub(crate) async fn fetch_spot_chart_asset_contexts(
+    network: HyperliquidNetwork,
     symbols: Vec<String>,
 ) -> Result<Vec<(String, AssetContext)>, String> {
     if symbols.is_empty() {
@@ -76,7 +84,7 @@ pub(crate) async fn fetch_spot_chart_asset_contexts(
 
     let response = CLIENT
         .clone()
-        .post(API_URL)
+        .post(network.info_url())
         .json(&serde_json::json!({ "type": "spotMetaAndAssetCtxs" }))
         .send()
         .await

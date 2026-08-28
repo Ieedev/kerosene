@@ -252,11 +252,13 @@ impl TradingTerminal {
             &account_address,
             prepared.market_type,
         );
-        place_order_task(key, request, move |result| Message::HudOrderResult {
-            pending_indicator_id,
-            inflight_id,
-            context,
-            result: Box::new(result),
+        place_order_task(self.hyperliquid_network, key, request, move |result| {
+            Message::HudOrderResult {
+                pending_indicator_id,
+                inflight_id,
+                context,
+                result: Box::new(result),
+            }
         })
     }
 

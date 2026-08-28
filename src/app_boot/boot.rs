@@ -61,6 +61,7 @@ impl TradingTerminal {
             zeroize::Zeroizing::new(cfg.schwab_access_token.trim().to_string());
 
         let (charts, chart_tasks) = Self::boot_chart_instances(
+            cfg.hyperliquid_network,
             &chart_configs,
             &muted_tickers,
             chart_backfill_source,
@@ -70,6 +71,7 @@ impl TradingTerminal {
         boot_tasks.extend(chart_tasks);
 
         let (spaghetti_charts, spaghetti_tasks) = Self::boot_spaghetti_instances(
+            cfg.hyperliquid_network,
             &spaghetti_configs,
             &muted_tickers,
             chart_backfill_source,
@@ -120,6 +122,7 @@ impl TradingTerminal {
             wallet_tracker,
             address_book,
         });
+        boot_tasks.push(state.refresh_ai_overlay());
 
         if !wallet_tracker_added_labels.is_empty() || cfg.secret_cleanup_state_dirty {
             state.persist_config();
@@ -171,7 +174,10 @@ impl TradingTerminal {
         let book_task = state.boot_order_book_tasks();
         let positioning_task = state.boot_positioning_info_tasks();
 
-        let symbols_task = Task::perform(fetch_exchange_symbols_cached(), Message::SymbolsLoaded);
+        let network = state.hyperliquid_network;
+        let symbols_task = Task::perform(fetch_exchange_symbols_cached(network), move |result| {
+            Message::SymbolsLoaded(network, result)
+        });
 
         let connect_task = if has_boot_wallet {
             Task::done(Message::ConnectWallet)

@@ -37,10 +37,15 @@ fn tracked_trade_subscription(addresses: Vec<String>) -> Option<(String, Value)>
 }
 
 pub fn ws_hydromancer_tracked_trades(
-    stream_key: &(HydromancerStreamKey, u64, Vec<String>),
+    stream_key: &(
+        crate::hyperliquid_network::HyperliquidNetwork,
+        HydromancerStreamKey,
+        u64,
+        Vec<String>,
+    ),
 ) -> WsStream<HydromancerWsMessage> {
-    let manager_key = stream_key.0.clone();
-    let addresses = stream_key.2.clone();
+    let manager_key = stream_key.1.clone();
+    let addresses = stream_key.3.clone();
 
     Box::pin(iced::stream::channel(10000, async move |mut output| {
         let Some((topic, payload)) = tracked_trade_subscription(addresses) else {

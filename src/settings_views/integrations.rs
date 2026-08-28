@@ -1,6 +1,7 @@
 use crate::app_state::TradingTerminal;
 use crate::config::ReadDataProvider;
 use crate::helpers;
+use crate::hyperliquid_network::HyperliquidNetwork;
 use crate::message::Message;
 use iced::widget::{button, checkbox, column, pick_list, row, rule, text, text_input};
 use iced::{Alignment, Element, Fill, Length};
@@ -58,6 +59,11 @@ impl TradingTerminal {
             }
             ReadDataProvider::Hydromancer => "Hydromancer",
         };
+        let network_color = if self.hyperliquid_network.is_testnet() {
+            current_theme.palette().warning
+        } else {
+            current_theme.palette().success
+        };
         let read_provider_status_color = match self.read_data_provider {
             ReadDataProvider::Hyperliquid => current_theme.extended_palette().background.weak.text,
             ReadDataProvider::Hydromancer if self.hydromancer_api_key.trim().is_empty() => {
@@ -78,6 +84,35 @@ impl TradingTerminal {
             text("Integrations")
                 .size(16)
                 .color(current_theme.palette().text),
+            rule::horizontal(1),
+            column![
+                row![
+                    text("Hyperliquid network")
+                        .size(14)
+                        .color(current_theme.palette().text)
+                        .width(Fill),
+                    text(self.hyperliquid_network.label())
+                        .size(12)
+                        .color(network_color),
+                ]
+                .align_y(iced::Alignment::Center),
+                pick_list(
+                    HyperliquidNetwork::ALL.to_vec(),
+                    Some(self.hyperliquid_network),
+                    Message::HyperliquidNetworkSelected,
+                )
+                .padding([4, 8])
+                .text_size(12)
+                .width(Length::Fixed(240.0)),
+                text(if self.hyperliquid_network.is_testnet() {
+                    "TESTNET uses simulated funds. Active automations and exchange requests must stop before switching."
+                } else {
+                    "Mainnet is active. Switching environments clears live market and account data."
+                })
+                .size(11)
+                .color(network_color),
+            ]
+            .spacing(8),
             rule::horizontal(1),
             column![
                 row![
@@ -140,6 +175,48 @@ impl TradingTerminal {
                     } else {
                         current_theme.palette().warning
                     }),
+            ]
+            .spacing(8),
+            rule::horizontal(1),
+            column![
+                row![
+                    text("Local AI overlay")
+                        .size(14)
+                        .color(current_theme.palette().text)
+                        .width(Fill),
+                    text(self.ai_overlay.connection.label())
+                        .size(12)
+                        .color(if matches!(
+                            self.ai_overlay.connection,
+                            crate::ai_overlay_state::AiOverlayConnection::NoDecision
+                                | crate::ai_overlay_state::AiOverlayConnection::DecisionAvailable
+                        ) {
+                            current_theme.palette().success
+                        } else {
+                            current_theme.palette().warning
+                        }),
+                ]
+                .align_y(iced::Alignment::Center),
+                row![
+                    text_input(
+                        "http://127.0.0.1:8765",
+                        &self.ai_overlay_service_url_input
+                    )
+                    .style(helpers::text_input_style)
+                    .on_input(Message::AiOverlayServiceUrlChanged)
+                    .on_submit(Message::SaveAiOverlayServiceUrl)
+                    .size(12)
+                    .padding(6)
+                    .width(Fill),
+                    button(text("Save").size(12))
+                        .padding([6, 12])
+                        .on_press(Message::SaveAiOverlayServiceUrl),
+                ]
+                .spacing(8)
+                .align_y(iced::Alignment::Center),
+                text("Loopback only; queried with GET /v1/status. It never receives credentials or can execute trades.")
+                    .size(11)
+                    .color(current_theme.extended_palette().background.weak.text),
             ]
             .spacing(8),
             rule::horizontal(1),

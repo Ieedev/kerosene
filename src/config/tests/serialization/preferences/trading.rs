@@ -2,6 +2,7 @@ use super::{
     KeroseneConfig, default_config_value, default_market_slippage_pct, json_string, remove_field,
     value_from_json, value_from_str,
 };
+use crate::config::HyperliquidNetwork;
 
 #[test]
 fn legacy_config_without_market_slippage_uses_default() {
@@ -15,6 +16,42 @@ fn legacy_config_without_market_slippage_uses_default() {
     let config: KeroseneConfig = value_from_json(value, "legacy config should deserialize");
 
     assert_eq!(config.market_slippage_pct, default_market_slippage_pct());
+}
+
+#[test]
+fn network_and_local_ai_service_preferences_round_trip_with_safe_legacy_defaults() {
+    let config = KeroseneConfig {
+        hyperliquid_network: HyperliquidNetwork::Testnet,
+        ai_overlay_service_url: "http://localhost:9000".to_string(),
+        ..KeroseneConfig::default()
+    };
+
+    let json = json_string(&config, "config should serialize");
+    let decoded: KeroseneConfig = value_from_str(&json, "config should deserialize");
+    assert_eq!(decoded.hyperliquid_network, HyperliquidNetwork::Testnet);
+    assert_eq!(decoded.ai_overlay_service_url, "http://localhost:9000");
+
+    let mut legacy = default_config_value();
+    remove_field(
+        &mut legacy,
+        "hyperliquid_network",
+        "config should serialize to object",
+    );
+    remove_field(
+        &mut legacy,
+        "ai_overlay_service_url",
+        "config should serialize to object",
+    );
+    let decoded_legacy: KeroseneConfig =
+        value_from_json(legacy, "legacy config should deserialize");
+    assert_eq!(
+        decoded_legacy.hyperliquid_network,
+        HyperliquidNetwork::Mainnet
+    );
+    assert_eq!(
+        decoded_legacy.ai_overlay_service_url,
+        crate::ai_overlay_state::DEFAULT_AI_OVERLAY_SERVICE_URL
+    );
 }
 
 #[test]

@@ -295,10 +295,12 @@ impl TradingTerminal {
         let account_addr = addr.clone();
         let account_scope = self.account_data_fetch_scope();
         let account_provider = self.read_data_provider;
+        let network = self.hyperliquid_network;
         let account_context = self.begin_account_data_request_context();
         let hydromancer_key = self.hydromancer_api_key_for_task();
         let account_task = Task::perform(
             fetch_account_data_scoped_with_provider(
+                network,
                 addr.clone(),
                 account_scope,
                 account_provider,

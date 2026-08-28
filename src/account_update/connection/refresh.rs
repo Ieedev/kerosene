@@ -277,13 +277,20 @@ impl TradingTerminal {
         }
         let requested_addr = addr.clone();
         let provider = self.read_data_provider;
+        let network = self.hyperliquid_network;
         let account_context = self.begin_account_data_request_context();
         let hydromancer_key = self.hydromancer_api_key_for_task();
         self.account_loading = true;
         self.account_reconciliation_required = true;
         self.account_error = None;
         Task::perform(
-            fetch_account_data_scoped_with_provider(addr, scope, provider, hydromancer_key),
+            fetch_account_data_scoped_with_provider(
+                network,
+                addr,
+                scope,
+                provider,
+                hydromancer_key,
+            ),
             move |r| {
                 Message::AccountDataLoaded(
                     requested_addr.clone().into(),
@@ -308,12 +315,19 @@ impl TradingTerminal {
         }
 
         let provider = self.read_data_provider;
+        let network = self.hyperliquid_network;
         let account_context = self.begin_twap_reconciliation_account_data_request_context(&addr);
         let hydromancer_key = self.hydromancer_api_key_for_task();
         let requested_addr = addr.clone();
         let scope = self.account_data_fetch_scope();
         Task::perform(
-            fetch_account_data_scoped_with_provider(addr, scope, provider, hydromancer_key),
+            fetch_account_data_scoped_with_provider(
+                network,
+                addr,
+                scope,
+                provider,
+                hydromancer_key,
+            ),
             move |r| {
                 Message::AccountDataLoaded(
                     requested_addr.clone().into(),

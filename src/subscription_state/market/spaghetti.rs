@@ -41,6 +41,7 @@ impl TradingTerminal {
                         subs.push(
                             Subscription::run_with(
                                 (
+                                    self.hyperliquid_network,
                                     api_key,
                                     10000 + inst.id,
                                     self.spaghetti_instance_epoch,
@@ -58,6 +59,7 @@ impl TradingTerminal {
                         subs.push(
                             Subscription::run_with(
                                 (
+                                    self.hyperliquid_network,
                                     10000 + inst.id,
                                     self.spaghetti_instance_epoch,
                                     series.symbol.clone(),

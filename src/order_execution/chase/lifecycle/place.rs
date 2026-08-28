@@ -387,9 +387,11 @@ impl TradingTerminal {
         let request = prepared.place_request_with_existing_cloid(cloid);
 
         self.invalidate_spot_balances_after_exchange_dispatch(&account_address, market_type);
-        place_order_task(key, request, move |r| Message::ChasePlaceResult {
-            chase_id,
-            result: Box::new(r),
+        place_order_task(self.hyperliquid_network, key, request, move |r| {
+            Message::ChasePlaceResult {
+                chase_id,
+                result: Box::new(r),
+            }
         })
     }
 }

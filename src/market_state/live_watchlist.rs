@@ -62,8 +62,9 @@ impl TradingTerminal {
                 self.live_watchlist_contexts_refresh_pending = false;
                 self.live_watchlist_contexts_loading = true;
                 let requested_at = plan.requested_at;
+                let network = self.hyperliquid_network;
                 tasks.push(Task::perform(
-                    api::fetch_watchlist_contexts(plan.context_symbols),
+                    api::fetch_watchlist_contexts(network, plan.context_symbols),
                     move |result| {
                         Message::LiveWatchlistContextsLoaded(
                             request_id,
@@ -90,8 +91,9 @@ impl TradingTerminal {
                 self.live_watchlist_history_refresh_pending = false;
                 self.live_watchlist_history_loading = true;
                 let requested_at = plan.requested_at;
+                let network = self.hyperliquid_network;
                 tasks.push(Task::perform(
-                    api::fetch_watchlist_history(plan.history_symbols),
+                    api::fetch_watchlist_history(network, plan.history_symbols),
                     move |result| {
                         Message::LiveWatchlistHistoryLoaded(
                             request_id,

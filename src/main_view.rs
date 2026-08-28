@@ -11,7 +11,7 @@ use crate::canvas_state::WorkspaceId;
 use crate::message::Message;
 use iced::widget::container as container_style;
 use iced::widget::{column, container, stack};
-use iced::{Element, Fill, Theme};
+use iced::{Element, Fill, Theme, alignment};
 
 // ---------------------------------------------------------------------------
 // Main window shell
@@ -47,6 +47,15 @@ impl TradingTerminal {
         if let Some(toast_overlay) = self.view_toast_overlay(&theme) {
             layers.push(toast_overlay);
         }
+        layers.push(
+            container(self.view_ai_overlay())
+                .width(Fill)
+                .height(Fill)
+                .align_x(alignment::Horizontal::Right)
+                .align_y(alignment::Vertical::Bottom)
+                .padding(12)
+                .into(),
+        );
 
         if self.last_focused_workspace == WorkspaceId::Main
             && let Some(alfred_overlay) = self.view_alfred_overlay(&theme)

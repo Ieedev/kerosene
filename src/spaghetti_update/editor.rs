@@ -57,6 +57,7 @@ impl TradingTerminal {
         let hydromancer_generation = self.hydromancer_key_generation;
         let hydromancer_api_key = self.hydromancer_api_key_for_task();
         let instance_epoch = self.spaghetti_instance_epoch;
+        let network = self.hyperliquid_network;
         let mut task = Task::none();
         if let Some(inst) = self.spaghetti_charts.get_mut(&id)
             && !inst.canvas.series.iter().any(|s| s.symbol == key)
@@ -81,6 +82,7 @@ impl TradingTerminal {
             });
             inst.canvas.apply_style_colors(&theme);
             task = Self::fetch_spaghetti_candles(
+                network,
                 id,
                 instance_epoch,
                 &key,

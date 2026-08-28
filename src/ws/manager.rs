@@ -5,7 +5,6 @@ use self::timing::{
     EXCHANGE_WS_RECONNECT_POLICY, ReconnectPolicy, WS_CONNECT_TIMEOUT_SECS, read_loop_timeout,
     stale_read_remaining,
 };
-use super::WS_URL;
 use super::connect::{ConnectAttempt, connect_with_timeout};
 #[cfg(not(test))]
 use super::telemetry::{
@@ -15,12 +14,13 @@ use super::telemetry::{
     telemetry_add_rx, telemetry_add_tx, telemetry_mark_ws_ping_start, telemetry_on_connect,
     telemetry_on_disconnect, telemetry_update_ws_latency_from_ping_start,
 };
+use crate::hyperliquid_network::HyperliquidNetwork;
 use futures::{Sink, SinkExt as _};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::fmt;
-use std::sync::Arc;
-use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 use tokio::sync::{broadcast, mpsc};
 use tokio_tungstenite::tungstenite::Message as WsMsg;
@@ -41,7 +41,7 @@ mod integration_tests;
 mod tests;
 
 // ---------------------------------------------------------------------------
-// Global Multiplexer Setup
+// Network Multiplexer Setup
 // ---------------------------------------------------------------------------
 
 #[cfg(not(test))]
@@ -129,10 +129,10 @@ pub(super) fn redacted_ws_topic_debug_value(topic: &str) -> &str {
 
 struct WsManager {
     cmd_tx: WsCommandSender,
-    msg_rx: broadcast::Receiver<WsRoutedMessage>,
+    msg_tx: broadcast::Sender<WsRoutedMessage>,
 }
 
-static WS_MANAGER: OnceLock<WsManager> = OnceLock::new();
+static WS_MANAGERS: OnceLock<Mutex<HashMap<HyperliquidNetwork, WsManager>>> = OnceLock::new();
 
 #[derive(Clone, Default)]
 struct WsReconnectGate(Arc<AtomicBool>);
@@ -189,10 +189,16 @@ impl WsCommandSender {
     }
 }
 
-pub(crate) fn get_manager() -> (WsCommandSender, broadcast::Receiver<WsRoutedMessage>) {
-    let mgr = WS_MANAGER.get_or_init(|| {
+pub(crate) fn get_manager(
+    network: HyperliquidNetwork,
+) -> (WsCommandSender, broadcast::Receiver<WsRoutedMessage>) {
+    let managers = WS_MANAGERS.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut managers = managers
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mgr = manager_for_network(&mut managers, network, || {
         let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
-        let (msg_tx, msg_rx) = broadcast::channel(10000);
+        let (msg_tx, _) = broadcast::channel(10000);
         let reconnect_gate = WsReconnectGate::default();
         let command_sender = WsCommandSender::new(cmd_tx.clone(), reconnect_gate.clone());
 
@@ -207,17 +213,34 @@ pub(crate) fn get_manager() -> (WsCommandSender, broadcast::Receiver<WsRoutedMes
         });
 
         tokio::spawn(ws_manager_task_with_reconnect_gate(
-            WS_URL.to_string(),
+            ws_manager_url(network).to_string(),
             cmd_rx,
-            msg_tx,
+            msg_tx.clone(),
+            network,
             reconnect_gate,
         ));
         WsManager {
             cmd_tx: command_sender,
-            msg_rx,
+            msg_tx,
         }
     });
-    (mgr.cmd_tx.clone(), mgr.msg_rx.resubscribe())
+    (mgr.cmd_tx.clone(), mgr.msg_tx.subscribe())
+}
+
+fn manager_for_network(
+    managers: &mut HashMap<HyperliquidNetwork, WsManager>,
+    network: HyperliquidNetwork,
+    create: impl FnOnce() -> WsManager,
+) -> &WsManager {
+    managers.entry(network).or_insert_with(create)
+}
+
+fn ws_manager_url(network: HyperliquidNetwork) -> &'static str {
+    network.ws_url()
+}
+
+fn api_latency_probe_url(network: HyperliquidNetwork) -> &'static str {
+    network.info_url()
 }
 
 #[cfg(test)]
@@ -226,20 +249,28 @@ pub(super) async fn ws_manager_task(
     cmd_rx: mpsc::UnboundedReceiver<WsCommand>,
     msg_tx: broadcast::Sender<WsRoutedMessage>,
 ) {
-    ws_manager_task_with_reconnect_gate(ws_url, cmd_rx, msg_tx, WsReconnectGate::default()).await;
+    ws_manager_task_with_reconnect_gate(
+        ws_url,
+        cmd_rx,
+        msg_tx,
+        HyperliquidNetwork::Mainnet,
+        WsReconnectGate::default(),
+    )
+    .await;
 }
 
 async fn ws_manager_task_with_reconnect_gate(
     ws_url: String,
     cmd_rx: mpsc::UnboundedReceiver<WsCommand>,
     msg_tx: broadcast::Sender<WsRoutedMessage>,
+    network: HyperliquidNetwork,
     reconnect_gate: WsReconnectGate,
 ) {
     ws_manager_task_with_api_probe(
         ws_url,
         cmd_rx,
         msg_tx,
-        ApiLatencyProbe::production(),
+        ApiLatencyProbe::production(network),
         reconnect_gate,
     )
     .await;
@@ -448,7 +479,7 @@ async fn ws_manager_task_with_options(
 #[derive(Clone)]
 enum ApiLatencyProbe {
     #[cfg(not(test))]
-    Network,
+    Network(&'static str),
     #[cfg(test)]
     Disabled,
     #[cfg(test)]
@@ -456,13 +487,14 @@ enum ApiLatencyProbe {
 }
 
 impl ApiLatencyProbe {
-    fn production() -> Self {
+    fn production(network: HyperliquidNetwork) -> Self {
         #[cfg(not(test))]
         {
-            Self::Network
+            Self::Network(api_latency_probe_url(network))
         }
         #[cfg(test)]
         {
+            let _ = network;
             Self::Disabled
         }
     }
@@ -470,8 +502,8 @@ impl ApiLatencyProbe {
     fn spawn(&self) {
         match self {
             #[cfg(not(test))]
-            Self::Network => {
-                tokio::spawn(update_api_latency_once());
+            Self::Network(info_url) => {
+                tokio::spawn(update_api_latency_once(info_url));
             }
             #[cfg(test)]
             Self::Disabled => {}
@@ -519,18 +551,13 @@ pub(super) async fn ws_manager_task_with_connect_timeout_for_test(
 }
 
 #[cfg(not(test))]
-async fn update_api_latency_once() {
+async fn update_api_latency_once(info_url: &'static str) {
     let start_time = now_ms();
     let client = crate::api::CLIENT.clone();
     let req_payload = serde_json::json!({ "type": "ping" });
     telemetry_mark_api_attempt();
 
-    match client
-        .post(crate::api::API_URL)
-        .json(&req_payload)
-        .send()
-        .await
-    {
+    match client.post(info_url).json(&req_payload).send().await {
         Ok(resp) if resp.status().is_success() => {
             let latency = now_ms().saturating_sub(start_time);
             telemetry_update_api_latency(latency);

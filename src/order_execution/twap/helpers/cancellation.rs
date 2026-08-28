@@ -1,3 +1,4 @@
+use crate::hyperliquid_network::HyperliquidNetwork;
 use crate::message::Message;
 use crate::order_execution::{cancel_order_by_cloid_task, cancel_order_task};
 use crate::twap_state::TwapChildOrder;
@@ -41,6 +42,7 @@ pub(in crate::order_execution::twap) fn twap_cancel_label(
 }
 
 pub(in crate::order_execution::twap) fn twap_cancel_child_task(
+    network: HyperliquidNetwork,
     twap_id: u64,
     key: Zeroizing<String>,
     asset: u32,
@@ -61,7 +63,7 @@ pub(in crate::order_execution::twap) fn twap_cancel_child_task(
 
     if let Some(cloid) = cloid {
         let request_cloid = cloid.clone();
-        return cancel_order_by_cloid_task(key, asset, request_cloid, move |result| {
+        return cancel_order_by_cloid_task(network, key, asset, request_cloid, move |result| {
             Message::TwapUnexpectedCancelResult {
                 twap_id,
                 oid: None,
@@ -74,7 +76,7 @@ pub(in crate::order_execution::twap) fn twap_cancel_child_task(
     let Some(oid) = oid else {
         return Task::none();
     };
-    cancel_order_task(key, asset, oid, move |result| {
+    cancel_order_task(network, key, asset, oid, move |result| {
         Message::TwapUnexpectedCancelResult {
             twap_id,
             oid: Some(oid),

@@ -75,7 +75,13 @@ impl TradingTerminal {
                         HydromancerStreamKey::from_zeroizing(api_key, hydromancer_key_generation);
                     subs.push(
                         Subscription::run_with(
-                            (stream_key, ob.id, symbol.clone(), sigfigs),
+                            (
+                                self.hyperliquid_network,
+                                stream_key,
+                                ob.id,
+                                symbol.clone(),
+                                sigfigs,
+                            ),
                             ws_hydromancer_book_stream_keyed_events,
                         )
                         .with(source_context)
@@ -84,7 +90,7 @@ impl TradingTerminal {
                 } else {
                     subs.push(
                         Subscription::run_with(
-                            (ob.id, symbol.clone(), sigfigs),
+                            (self.hyperliquid_network, ob.id, symbol.clone(), sigfigs),
                             ws_book_stream_keyed_events,
                         )
                         .with(source_context)
@@ -100,7 +106,7 @@ impl TradingTerminal {
                         HydromancerStreamKey::from_zeroizing(api_key, hydromancer_key_generation);
                     subs.push(
                         Subscription::run_with(
-                            (stream_key, ob.id, symbol.clone()),
+                            (self.hyperliquid_network, stream_key, ob.id, symbol.clone()),
                             ws_hydromancer_asset_ctx_stream_keyed,
                         )
                         .with(source_context)
@@ -108,9 +114,12 @@ impl TradingTerminal {
                     );
                 } else {
                     subs.push(
-                        Subscription::run_with((ob.id, symbol.clone()), ws_asset_ctx_stream_keyed)
-                            .with(source_context)
-                            .map(order_book_asset_ctx_stream_event_message),
+                        Subscription::run_with(
+                            (self.hyperliquid_network, ob.id, symbol.clone()),
+                            ws_asset_ctx_stream_keyed,
+                        )
+                        .with(source_context)
+                        .map(order_book_asset_ctx_stream_event_message),
                     );
                 }
             }

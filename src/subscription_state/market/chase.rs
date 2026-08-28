@@ -59,7 +59,13 @@ impl TradingTerminal {
                     HydromancerStreamKey::from_zeroizing(api_key, hydromancer_key_generation);
                 subs.push(
                     Subscription::run_with(
-                        (stream_key, chase.id, chase.coin.clone(), sigfigs),
+                        (
+                            self.hyperliquid_network,
+                            stream_key,
+                            chase.id,
+                            chase.coin.clone(),
+                            sigfigs,
+                        ),
                         ws_hydromancer_book_stream_keyed_events,
                     )
                     .with(source_context)
@@ -68,7 +74,12 @@ impl TradingTerminal {
             } else {
                 subs.push(
                     Subscription::run_with(
-                        (chase.id, chase.coin.clone(), sigfigs),
+                        (
+                            self.hyperliquid_network,
+                            chase.id,
+                            chase.coin.clone(),
+                            sigfigs,
+                        ),
                         ws_book_stream_keyed_events,
                     )
                     .with(source_context)
